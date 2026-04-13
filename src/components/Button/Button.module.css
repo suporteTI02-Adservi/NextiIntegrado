@@ -1,0 +1,93 @@
+.btn {
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 
+  Estilo Primário
+*/
+.primary {
+  padding: 1rem 1.5rem;
+  color: var(--text-main);
+  background: var(--header-text); /* Cor principal do botão (Laranja no Light, Grafite no Dark) */
+  box-shadow: 
+    4px 4px 10px rgba(0, 0, 0, 0.4), 
+    -4px -4px 10px rgba(255, 255, 255, 0.2);
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+  box-shadow: 
+    6px 6px 14px rgba(0, 0, 0, 0.45), 
+    -6px -6px 14px rgba(255, 255, 255, 0.2);
+}
+
+.primary:active:not(:disabled) {
+  filter: brightness(0.9);
+  box-shadow: inset 4px 4px 8px rgba(0,0,0,0.3), inset -4px -4px 8px rgba(255,255,255,0.2);
+}
+
+/* 
+  Estilo Secundário (Off-White/Neomorphism puro) 
+*/
+.secondary {
+  padding: 1rem 1.5rem;
+  color: var(--header-text); 
+  background: var(--bg-main); 
+  box-shadow: 
+    6px 6px 16px var(--shadow-dark), 
+    -6px -6px 16px var(--shadow-light);
+}
+
+.secondary:hover:not(:disabled) {
+  filter: brightness(0.95);
+  box-shadow: 
+    4px 4px 12px var(--shadow-dark), 
+    -4px -4px 12px var(--shadow-light);
+}
+
+.secondary:active:not(:disabled) {
+  box-shadow: 
+    inset 4px 4px 10px var(--shadow-dark), 
+    inset -4px -4px 10px var(--shadow-light);
+}
+
+/*
+  Estilo Icon (Redondo)
+*/
+.icon {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  padding: 0;
+  color: var(--header-text);
+  background: var(--bg-main);
+  box-shadow: 
+    5px 5px 12px var(--shadow-dark), 
+    -5px -5px 12px var(--shadow-light);
+  font-size: 1.2rem;
+}
+
+.icon:hover:not(:disabled) {
+  filter: brightness(0.95);
+  transform: scale(1.05);
+}
+
+.icon:active:not(:disabled) {
+  box-shadow: 
+    inset 4px 4px 10px var(--shadow-dark), 
+    inset -4px -4px 10px var(--shadow-light);
+  transform: scale(0.95);
+}

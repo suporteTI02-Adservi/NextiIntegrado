@@ -1,18 +1,51 @@
 import React, { useEffect, useState } from "react";
-import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
-import { FaCloudDownloadAlt } from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight, FaMoon, FaSun } from "react-icons/fa";
 
 import styles from "./mainPage.module.css";
 import { NoticeService } from "../../services/NoticeService";
 import { GetNotices } from "../../services/GetNotices";
+import { NoticeCard } from "../../components/NoticeCard/NoticeCard";
+import { Button } from "../../components/Button/Button";
+import { Toast } from "../../components/Toast/Toast";
+import { MessageModal } from "../../components/Modal/MessageModal";
 
 const MainPage: React.FC = () => {
-  const [matricula, setMatricula] = useState(0);
+  const [matricula, setMatricula] = useState<string>("");
   const [documents, setDocuments] = useState<any>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(true);
+
+  // Novas mecânicas de Design
+  const [toastMessage, setToastMessage] = useState("");
+  const [isToastVisible, setIsToastVisible] = useState(false);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState("");
+  const [modalHtml, setModalHtml] = useState("");
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setIsToastVisible(true);
+  };
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem("theme");
+    return (
+      saved === "dark" ||
+      (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)
+    );
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.setAttribute("data-theme", "dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.body.removeAttribute("data-theme");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDarkMode]);
 
   const noticeService = new NoticeService();
   const getNoticesService = new GetNotices();
@@ -26,45 +59,74 @@ const MainPage: React.FC = () => {
       .replace(/<img[^>]*>/gi, "");
   };
 
-  const handleSearch = async (e?: React.SubmitEvent) => {
+  const handleMatriculaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    
+    // Feedback instantâneo se digitarem letras
+    if (/[^0-9]/.test(val)) {
+      showToast("Apenas números são permitidos na matrícula.");
+    }
+    
+    const numericalOnly = val.replace(/[^0-9]/g, "");
+    
+    // Feedback instantâneo se ultrapassarem 9 caracteres
+    if (numericalOnly.length > 9) {
+      showToast("A matrícula já atingiu o limite de 9 números.");
+    }
+    
+    // Bloquear a string para passar apenas tamanho 9 numérico
+    setMatricula(numericalOnly.substring(0, 9));
+  };
+
+  const handleSearch = async (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
-      setCurrentPage(0); // reset aqui
+      setCurrentPage(0);
     }
 
-    if (e) e.preventDefault();
+    if (!matricula) return;
+
+    if (matricula.length !== 9) {
+      showToast("A matrícula deve conter exatamente 9 números para buscar.");
+      return;
+    }
+
     setLoading(true);
 
-    const response = await noticeService.getDocuments(matricula, currentPage);
+    try {
+      const response = await noticeService.getDocuments(
+        Number(matricula),
+        currentPage,
+      );
 
-    if (response && Array.isArray(response)) {
-      // verifica se veio vazio
-      if (response.length === 0) {
-        setHasNextPage(false);
-        setDocuments([]);
+      if (response && Array.isArray(response)) {
+        if (response.length === 0) {
+          setHasNextPage(false);
+          setDocuments([]);
+        } else {
+          const lastItem = response[response.length - 1];
+          const isLastPage = lastItem?.name?.toUpperCase().includes("BEM VINDO");
+
+          setHasNextPage(!isLastPage);
+          setDocuments(
+            response.map((doc: any) => ({
+              personName: doc.personName || "N/A",
+              id: doc.id || null,
+              name: doc.name || "N/A",
+              text: doc.text || "N/A",
+              idNoticePerson: doc.idNoticePerson || null,
+            })),
+          );
+        }
       } else {
-        const lastItem = response[response.length - 1];
-
-        const isLastPage = lastItem?.name?.toUpperCase().includes("BEM VINDO");
-
-        setHasNextPage(!isLastPage);
-
-        setDocuments(
-          response.map((doc: any) => ({
-            personName: doc.personName || "N/A",
-            id: doc.id || null,
-            name: doc.name || "N/A",
-            text: doc.text || "N/A",
-            idNoticePerson: doc.idNoticePerson || null,
-          })),
-        );
+        setDocuments([]);
+        setHasNextPage(false);
+        showToast("Nenhum documento encontrado ou resposta inválida.");
       }
-
-      setError("");
-    } else {
+    } catch (err: any) {
       setDocuments([]);
       setHasNextPage(false);
-      setError("Nenhum documento encontrado ou erro na resposta.");
+      showToast(err.message || "Falha técnica ao acessar serviços.");
     }
 
     setLoading(false);
@@ -72,15 +134,30 @@ const MainPage: React.FC = () => {
 
   const handleDownload = async (noticeId: number, name: string) => {
     if (noticeId === null) {
-      setError("ID de aviso ou ID externo da pessoa não definido.");
+      showToast("Falha técnica: ID do aviso não referenciado na API.");
       return;
     }
 
-    await getNoticesService.download_docs(noticeId, name);
+    try {
+      await getNoticesService.download_docs(noticeId, name);
+    } catch (err: any) {
+      showToast(err.message || "Erro durante o download do documento.");
+    }
+  };
+
+  const openFullMessage = (title: string, html: string) => {
+    setModalTitle(title);
+    setModalHtml(html);
+    setIsModalOpen(true);
   };
 
   useEffect(() => {
-    if (matricula !== 0) {
+    if (
+      matricula &&
+      matricula.length === 9 &&
+      !loading &&
+      (documents.length > 0 || currentPage > 0)
+    ) {
       handleSearch();
     }
   }, [currentPage]);
@@ -89,112 +166,94 @@ const MainPage: React.FC = () => {
     <div className={styles.page}>
       <header className={styles.header}>
         <h1>Convo</h1>
+        <button
+          className={styles.themeToggle}
+          onClick={() => setIsDarkMode(!isDarkMode)}
+          title={isDarkMode ? "Mudar para Claro" : "Mudar para Escuro"}
+          type="button"
+        >
+          {isDarkMode ? <FaSun color="#FFD43B" /> : <FaMoon />}
+        </button>
       </header>
       <main className={styles.main}>
         <form onSubmit={handleSearch} className={styles.form}>
           <div className={styles.inputGroup}>
-            <label htmlFor="matricula">Matrícula:</label>
+            <label htmlFor="matricula">Matrícula</label>
             <input
               id="matricula"
               type="text"
               value={matricula}
-              onChange={(e) => setMatricula(Number(e.target.value))}
-              placeholder="Digite a matrícula"
+              onChange={handleMatriculaChange}
+              placeholder="Digite os 9 números da matrícula"
               required
             />
           </div>
-          <button type="submit" disabled={loading} className={styles.btn}>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={loading}
+            style={{ width: "100%" }}
+          >
             {loading ? "Carregando..." : "Pesquisar Documentos"}
-          </button>
+          </Button>
         </form>
 
-        {error && <div className={styles.error}>{error}</div>}
-
         {documents && documents.length > 0 && !loading && (
-          <section className={styles.results}>
-            <h2>Documentos do Colaborador ({documents.length}):</h2>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Colaborador</th>
-                  <th>Nome</th>
-                  <th>Convocação</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {documents.map((doc: any, idx: any) => {
-                  return (
-                    <tr key={idx}>
-                      <td>{doc.personName || "N/A"}</td>
-                      <td>{doc.name || doc.name || "N/A"}</td>
-                      <td
-                        dangerouslySetInnerHTML={{
-                          __html: cleanHtml(doc.text || doc.text || "N/A"),
-                        }}
-                      />
+          <section className={styles.resultsArea}>
+            <h2>Documentos do Colaborador ({documents.length})</h2>
 
-                      <button
-                        className={styles.downloadBtn}
-                        onClick={() => handleDownload(doc.id, doc.name)}
-                      >
-                        <FaCloudDownloadAlt />
-                      </button>
-                    </tr>
-                  );
-                })}
-
-                {/* {documents.map((doc: any, idx: any) => {
-                  return (
-                    <tr key={idx}>
-                      <td>{doc.personName || "N/A"}</td>
-                      <td>{doc.name || doc.name || "N/A"}</td>
-                      <td
-                        dangerouslySetInnerHTML={{
-                          __html: doc.text || doc.text || "N/A",
-                        }}
-                      />
-                      <td>
-                        {doc.noticeStatusId === 2 && (
-                          <button
-                            onClick={() =>
-                              handleDownload(doc.id, doc.personsExternalIds[0])
-                            }
-                          >
-                            Baixar
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })} */}
-              </tbody>
-            </table>
+            <div className={styles.cardsGrid}>
+              {documents.map((doc: any, idx: any) => (
+                <NoticeCard
+                  key={idx}
+                  personName={doc.personName}
+                  id={doc.id}
+                  name={doc.name}
+                  text={doc.text} // Vai passar do DB pro front, Note: O doc.text contem o HTML original!
+                  onDownload={handleDownload}
+                  onReadMore={openFullMessage}
+                  cleanHtml={cleanHtml}
+                />
+              ))}
+            </div>
 
             <div className={styles.paginationContainer}>
-              <button
-                className={styles.paginationBtn}
+              <Button
+                variant="icon"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 0))}
                 disabled={loading || currentPage === 0}
               >
                 <FaArrowLeft />
-              </button>
+              </Button>
 
               <span>
                 Página {currentPage + 1} {!hasNextPage && "(última página)"}
               </span>
 
-              <button
-                className={styles.paginationBtn}
+              <Button
+                variant="icon"
                 disabled={loading || !hasNextPage}
                 onClick={() => setCurrentPage((prev) => prev + 1)}
               >
                 <FaArrowRight />
-              </button>
+              </Button>
             </div>
           </section>
         )}
       </main>
+
+      <Toast 
+        message={toastMessage} 
+        isVisible={isToastVisible} 
+        onClose={() => setIsToastVisible(false)} 
+      />
+
+      <MessageModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        documentTitle={modalTitle}
+        documentHtml={modalHtml}
+      />
     </div>
   );
 };

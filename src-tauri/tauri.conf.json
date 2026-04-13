@@ -33,7 +33,14 @@
     ],
     "windows": {
       "nsis": {
-        "compression": "lzma"
+        "compression": "lzma",
+        "installMode": "currentUser"
+      },
+      "webviewInstallMode": {
+        "type": "skip"
+      },
+      "wix": {
+        "language": "pt-BR"
       }
     }
   }

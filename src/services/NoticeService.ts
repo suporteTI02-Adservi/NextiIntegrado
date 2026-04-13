@@ -64,12 +64,12 @@ export class NoticeService {
       // Se for um erro de ambiente (TypeError), damos uma instrução mais clara
       if (err instanceof TypeError && err.message.includes("invoke")) {
         throw new Error(
-          "Erro de comunicação com o núcleo do Tauri. Tente reiniciar a aplicação pelo terminal.",
+          "Erro de comunicação com o núcleo do Tauri. Tente reiniciar a aplicação.",
         );
       }
 
       throw new Error(
-        "Não foi possível carregar os documentos. Verifique a conexão com o backend.",
+        "Erro no sistema. Entre em contato com o desenvolvedor: suporte.ti02@grupoadservi.com.br"
       );
     }
   }

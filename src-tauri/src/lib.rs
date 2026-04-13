@@ -5,12 +5,22 @@ pub mod commands {
 
     #[tauri::command]
     pub async fn get_token() -> Result<String, String> {
+        // Carrega variáveis do arquivo .env (caso exista) silenciosamente
+        dotenvy::dotenv().ok();
+
         let client = reqwest::Client::new();
+
+        // Evitando `.unwrap()`: Mapeamos o erro amigavelmente caso não encontre
+        let client_id = std::env::var("CLIENT_ID")
+            .map_err(|_| "A variável de ambiente CLIENT_ID não foi encontrada.".to_string())?;
+
+        let client_secret = std::env::var("CLIENT_SECRET")
+            .map_err(|_| "A variável de ambiente CLIENT_SECRET não foi encontrada.".to_string())?;
 
         let params = [
             ("grant_type", "client_credentials"),
-            ("client_id", &std::env::var("CLIENT_ID").unwrap()),
-            ("client_secret", &std::env::var("CLIENT_SECRET").unwrap()),
+            ("client_id", &client_id),
+            ("client_secret", &client_secret),
         ];
 
         let res = client

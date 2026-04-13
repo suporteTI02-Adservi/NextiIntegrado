@@ -1,0 +1,72 @@
+/* 
+  Card no estilo Glassmorphism + Neomorphism adaptado para Tema Dinâmico.
+*/
+.card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 
+    10px 10px 20px var(--shadow-dark),
+    -10px -10px 20px var(--shadow-light),
+    inset 0 0 0 1px var(--border-glass);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.4s ease;
+  height: 100%;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 
+    15px 15px 25px var(--shadow-dark),
+    -15px -15px 25px var(--shadow-light);
+}
+
+.cardHeader {
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-glass); 
+}
+
+.personName {
+  font-size: 1.25rem;
+  color: var(--text-main);
+  margin-bottom: 0.25rem;
+  font-weight: 700;
+  transition: color 0.4s ease;
+}
+
+.documentName {
+  font-size: 0.9rem;
+  color: var(--header-text);
+  font-weight: 600;
+  transition: color 0.4s ease;
+}
+
+.cardBody {
+  flex-grow: 1;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  transition: color 0.4s ease;
+}
+
+.documentText {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 1rem;
+}
