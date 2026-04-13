@@ -1,85 +1,118 @@
-# Nexti Integrado - Página de Acesso
+# Nexti Integrado
 
-## O que foi construído
+[![Tauri](https://img.shields.io/badge/Tauri-v2-blue?logo=rust)](https://tauri.app) [![React](https://img.shields.io/badge/React-19-green?logo=react)](https://react.dev)
 
-Uma página inicial de acesso para o app Tauri/React que:
-- Permite inserir **matrícula do colaborador** e **período de datas (DD/MM/YYYY)**.
-- Busca **token de autenticação** via API Nexti.
-- Consulta **documentos/convocações** do colaborador no período.
-- Exibe tabela com arquivos e links (assinatura/download).
+## 📖 Visão Geral
 
-**Fluxo:**
+**Nexti Integrado** é uma aplicação desktop minimalista construída com **Tauri v2** (Rust + React/TypeScript) para consulta de **documentos e convocações** de colaboradores via API Nexti (adservi).
+
+### Funcionalidades Principais
+- ✅ Busca paginada por **matrícula do colaborador**
+- ✅ Listagem de documentos/convocações em tabela limpa
+- ✅ Download direto de PDFs (salva via diálogo nativo)
+- ✅ Interface responsiva e minimalista
+- ✅ Bypass de CORS via backend Rust
+
+**Fluxo Simplificado**:
 ```
-Formulário → Token (OAuth) → API Documentos → Filtrar por matrícula → Tabela
-```
-
-## APIs Utilizadas
-```
-1. POST /security/oauth/token (client_credentials)
-2. GET /notices/documents/start/{DDMMYYYY000000}/finish/{DDMMYYYY000000}
-```
-
-## Como usar
-
-1. **Build Rust backend:**
-   ```
-   cd src-tauri
-   cargo build
-   ```
-
-2. **Rodar app:**
-   ```
-   npm run tauri dev
-   ```
-
-3. **Teste:**
-   - Matrícula: `123456` (exemplo)
-   - Datas: `01/01/2024` a `31/12/2024`
-   - Clique **"Pesquisar Documentos"**
-
-## Estrutura de Arquivos
-
-```
-src/services/
-├── AuthService.ts     # Classe token OAuth
-└── NoticeService.ts   # Classe documentos/convocações
-
-src/page/mainPage/
-├── mainPage.tsx       # Componente principal
-└── mainPage.module.css # Estilos
-
-src/utils/
-└── dateUtils.ts       # DD/MM/YYYY ↔ DDMMYYYY000000
-
-src/App.tsx            # Roteamento (/) → MainPage
+Matrícula → Token OAuth → ID Colaborador → Documentos (paginado) → Download PDF
 ```
 
-## Problema CORS (localhost:1420)
+## 🛠️ Arquitetura
 
-**Causa:** API Nexti bloqueia fetch do browser dev.
-**Soluções:**
-1. **Produção:** `npm run tauri dev` (Tauri bypassa CORS)
-2. **Dev:** Use proxy em `vite.config.ts` ou extensão CORS browser
+```
+Frontend (React 19/TS + Vite)
+├── src/page/mainPage/mainPage.tsx (UI + lógica de busca/paginação)
+├── src/services/
+│   ├── AuthService.ts (token)
+│   ├── NoticeService.ts (busca docs/colaborador)
+│   └── GetNotices.ts (download PDF base64)
+└── src/App.tsx (root)
 
-## Como adaptar tabela
+Backend (Rust + Tauri v2 + reqwest)
+├── src-tauri/src/lib.rs (commands: get_token, get_colaborador, get_documents, download_docs)
+└── src-tauri/src/main.rs (invoke handler + plugins fs/dialog)
+```
 
-Verifique estrutura JSON da API no console e ajuste campos:
-```ts
-// Exemplo API response
+## 🚀 Instalação e Execução
+
+### Pré-requisitos
+- **Rust**: `rustup install stable`
+- **Node.js**: v20+
+- **Tauri CLI**: `npm i -g @tauri-apps/cli`
+
+### 1. Clonar/Instalar Dependências
+```bash
+npm install
+cd src-tauri && cargo check
+```
+
+### 2. Desenvolvimento
+```bash
+npm run tauri dev
+```
+- Abre app em janela nativa (~port 1420 internamente)
+- Backend Rust proxya APIs (sem CORS)
+
+### 3. Build para Produção
+```bash
+npm run tauri build
+```
+- Gera executável em `src-tauri/target/release/bundle`
+
+## 🔌 APIs Nexti Integradas
+
+| Comando | Endpoint | Parâmetros | Retorno |
+|---------|----------|------------|---------|
+| `get_token` | `POST /security/oauth/token` | client_id=adservi | access_token |
+| `get_colaborador` | `GET /persons/externalid/{empresa}-{id}` | external_id (i64) | person { id } |
+| `get_documents` | `POST /core/notices/findsummonsandchecklistbypersonfilter` | personId, page | { content: [docs] } |
+| `download_docs` | `POST /report/notice/summonsreceipt` | notice_id | PDF base64 |
+
+**Credenciais**: Embutidas (adservi / secret). Para prod, use env vars.
+
+## 📱 Interface
+
+- **Formulário**: Input matrícula + botão "Pesquisar Documentos"
+- **Tabela**: Colaborador, Nome, Convocação (HTML limpo), Download (ícone)
+- **Paginação**: Anterior/Próxima (detecta fim por "BEM VINDO")
+- **Estados**: Loading, Erro, Vazio
+
+![Screenshot] (adicionar imagem da UI)
+
+## 🔧 Troubleshooting
+
+| Problema | Causa | Solução |
+|----------|-------|---------|
+| `invoke` error | Backend não rodando | `cargo build` + `npm run tauri dev` |
+| No docs | Matrícula inválida | Use matrícula real Nexti |
+| CORS dev | Vite dev server | Sempre use `tauri dev` |
+| Download falha | Token expirado | Reinicie app |
+
+**Logs**: Console do app (F12) + `RUST_LOG=debug cargo tauri dev`
+
+## 📈 Estrutura de Dados (API Response)
+
+```json
 {
-  "noticeId": "123",
-  "personExternalId": "456789",
-  "status": "pendente",
-  "signatureLink": "url...",
-  "downloadLink": "url..."
+  "id": 123,
+  "personName": "João Silva",
+  "name": "Convocação X",
+  "text": "<p>Conteúdo HTML...</p>",
+  "idNoticePerson": 456
 }
 ```
 
-## Dependências principais
-```
-Frontend: React 19 + React Router + TypeScript
-Backend: Tauri v2 + reqwest (proxy opcional)
-```
+## ♻️ Melhorias Futuras
+- [ ] Filtro por datas
+- [ ] Assinatura digital
+- [ ] Export múltiplo
+- [ ] Dark mode
+- [ ] Config env (tokens)
 
-**Status: ✅ Produção ready | 🔧 Teste com dados reais da API.**
+## 📄 Licença
+MIT - Feito com ❤️ para integração Nexti.
+
+**Status: ✅ App funcional | 🧪 Teste com matrículas reais!**
+
 

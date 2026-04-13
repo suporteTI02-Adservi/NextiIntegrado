@@ -9,8 +9,8 @@ pub mod commands {
 
         let params = [
             ("grant_type", "client_credentials"),
-            ("client_id", "adservi"),
-            ("client_secret", "1ca5bdf56eb68b3cf96b79fe167f19d12d2a15ff"),
+            ("client_id", &std::env::var("CLIENT_ID").unwrap()),
+            ("client_secret", &std::env::var("CLIENT_SECRET").unwrap()),
         ];
 
         let res = client
