@@ -252,3 +252,76 @@ body, html {
     grid-template-columns: 1fr;
   }
 }
+
+/* Download All Wrapper */
+.downloadAllWrapper {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  grid-column: 1 / -1; /* Ocupa todas as colunas caso esteja no grid */
+  margin-bottom: 1rem;
+}
+
+/* Loading Overlay */
+.loadingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.loadingCard {
+  background: var(--bg-glass);
+  padding: 3rem;
+  border-radius: 20px;
+  box-shadow: 10px 10px 20px var(--shadow-dark), -10px -10px 20px var(--shadow-light);
+  text-align: center;
+  border: 1px solid var(--border-glass);
+  width: 90%;
+  max-width: 450px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.loadingCard h2 {
+  color: var(--text-main);
+  font-size: 1.8rem;
+}
+
+.loadingCard p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.progressBar {
+  width: 100%;
+  height: 12px;
+  background: var(--shadow-dark);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.progressFill {
+  height: 100%;
+  background: var(--header-text);
+  width: 0%;
+  transition: width 0.4s ease;
+  border-radius: 6px;
+}
+
+.progressText {
+  font-weight: bold;
+  color: var(--header-text);
+  font-size: 1.2rem;
+}

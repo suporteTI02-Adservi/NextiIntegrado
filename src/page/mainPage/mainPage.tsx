@@ -1,51 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { FaArrowLeft, FaArrowRight, FaMoon, FaSun } from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight, FaCloudDownloadAlt } from "react-icons/fa";
 
 import styles from "./mainPage.module.css";
 import { NoticeService } from "../../services/NoticeService";
 import { GetNotices } from "../../services/GetNotices";
 import { NoticeCard } from "../../components/NoticeCard/NoticeCard";
 import { Button } from "../../components/Button/Button";
-import { Toast } from "../../components/Toast/Toast";
+import { Header } from "../../components/Header/Header";
+import { useToast } from "../../context/ToastContext";
 import { MessageModal } from "../../components/Modal/MessageModal";
 
 const MainPage: React.FC = () => {
   const [matricula, setMatricula] = useState<string>("");
   const [documents, setDocuments] = useState<any>([]);
   const [loading, setLoading] = useState(false);
+  const [downloadLoad, setDownloadLoad] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
   const [currentPage, setCurrentPage] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(true);
 
-  // Novas mecânicas de Design
-  const [toastMessage, setToastMessage] = useState("");
-  const [isToastVisible, setIsToastVisible] = useState(false);
-  
+  // Toast vindo do Contexto
+  const { showToast } = useToast();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState("");
   const [modalHtml, setModalHtml] = useState("");
 
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setIsToastVisible(true);
-  };
-
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem("theme");
-    return (
-      saved === "dark" ||
-      (!saved && window.matchMedia("(prefers-color-scheme: dark)").matches)
-    );
-  });
-
-  useEffect(() => {
-    if (isDarkMode) {
-      document.body.setAttribute("data-theme", "dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.body.removeAttribute("data-theme");
-      localStorage.setItem("theme", "light");
-    }
-  }, [isDarkMode]);
+  const [noticeID, setNoticeID] = useState<any[]>([]);
 
   const noticeService = new NoticeService();
   const getNoticesService = new GetNotices();
@@ -61,19 +42,19 @@ const MainPage: React.FC = () => {
 
   const handleMatriculaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    
+
     // Feedback instantâneo se digitarem letras
     if (/[^0-9]/.test(val)) {
       showToast("Apenas números são permitidos na matrícula.");
     }
-    
+
     const numericalOnly = val.replace(/[^0-9]/g, "");
-    
+
     // Feedback instantâneo se ultrapassarem 9 caracteres
     if (numericalOnly.length > 9) {
       showToast("A matrícula já atingiu o limite de 9 números.");
     }
-    
+
     // Bloquear a string para passar apenas tamanho 9 numérico
     setMatricula(numericalOnly.substring(0, 9));
   };
@@ -105,7 +86,9 @@ const MainPage: React.FC = () => {
           setDocuments([]);
         } else {
           const lastItem = response[response.length - 1];
-          const isLastPage = lastItem?.name?.toUpperCase().includes("BEM VINDO");
+          const isLastPage = lastItem?.name
+            ?.toUpperCase()
+            .includes("BEM VINDO");
 
           setHasNextPage(!isLastPage);
           setDocuments(
@@ -115,6 +98,13 @@ const MainPage: React.FC = () => {
               name: doc.name || "N/A",
               text: doc.text || "N/A",
               idNoticePerson: doc.idNoticePerson || null,
+            })),
+          );
+
+          setNoticeID(
+            response.map((doc: any) => ({
+              id: doc.id,
+              name: doc.name,
             })),
           );
         }
@@ -145,6 +135,30 @@ const MainPage: React.FC = () => {
     }
   };
 
+  const handleDownloadAll = async () => {
+    setDownloadLoad(true);
+    setDownloadProgress({ current: 0, total: 0 });
+
+    if (noticeID.length === 0) {
+      showToast("Nenhum documento para baixar.");
+      setDownloadLoad(false);
+      return;
+    }
+
+    try {
+      await getNoticesService.download_all_docs(noticeID, (current, total) => {
+        setDownloadProgress({ current, total });
+      });
+
+      showToast("Todos os documentos foram baixados com sucesso!");
+    } catch (err: any) {
+      showToast(err.message || "Erro durante o download dos documentos.");
+    } finally {
+      setDownloadLoad(false);
+      setDownloadProgress({ current: 0, total: 0 });
+    }
+  };
+
   const openFullMessage = (title: string, html: string) => {
     setModalTitle(title);
     setModalHtml(html);
@@ -164,17 +178,27 @@ const MainPage: React.FC = () => {
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <h1>Convo</h1>
-        <button
-          className={styles.themeToggle}
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          title={isDarkMode ? "Mudar para Claro" : "Mudar para Escuro"}
-          type="button"
-        >
-          {isDarkMode ? <FaSun color="#FFD43B" /> : <FaMoon />}
-        </button>
-      </header>
+      <Header />
+
+      {/* Overlay de Loading Progressivo */}
+      {downloadLoad && (
+        <div className={styles.loadingOverlay}>
+          <div className={styles.loadingCard}>
+            <h2>Baixando Documentos...</h2>
+            <p>Aguarde, estamos juntando e gerando o seu arquivo zip direto da API. Isso pode demorar alguns instantes.</p>
+            <div className={styles.progressBar}>
+              <div 
+                className={styles.progressFill} 
+                style={{ width: `${downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0}%` }}
+              />
+            </div>
+            <span className={styles.progressText}>
+              {downloadProgress.current} de {downloadProgress.total} baixados
+            </span>
+          </div>
+        </div>
+      )}
+
       <main className={styles.main}>
         <form onSubmit={handleSearch} className={styles.form}>
           <div className={styles.inputGroup}>
@@ -202,7 +226,19 @@ const MainPage: React.FC = () => {
           <section className={styles.resultsArea}>
             <h2>Documentos do Colaborador ({documents.length})</h2>
 
+            <div className={styles.downloadAllWrapper}>
+              <Button 
+                variant="primary" 
+                onClick={handleDownloadAll}
+                disabled={loading || downloadLoad}
+                style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+              >
+                <FaCloudDownloadAlt /> Baixar Todos ({documents.length})
+              </Button>
+            </div>
+
             <div className={styles.cardsGrid}>
+
               {documents.map((doc: any, idx: any) => (
                 <NoticeCard
                   key={idx}
@@ -242,13 +278,7 @@ const MainPage: React.FC = () => {
         )}
       </main>
 
-      <Toast 
-        message={toastMessage} 
-        isVisible={isToastVisible} 
-        onClose={() => setIsToastVisible(false)} 
-      />
-
-      <MessageModal 
+      <MessageModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         documentTitle={modalTitle}

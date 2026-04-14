@@ -1,7 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 // ⚠️ No v2, as importações mudaram para plugins específicos:
-import { writeFile } from "@tauri-apps/plugin-fs"; 
+import { writeFile } from "@tauri-apps/plugin-fs";
 import { save } from "@tauri-apps/plugin-dialog";
+import JSZip from "jszip";
 
 export class GetNotices {
   async download_docs(noticeId: number, name: string) {
@@ -42,6 +43,67 @@ export class GetNotices {
       await writeFile(filePath, pdfBytes);
 
       console.log(`Documento salvo em: ${filePath}`);
+    } catch (err: any) {
+      console.error("Erro detalhado no GetNotices (download_docs):", err);
+      throw err;
+    }
+  }
+
+  async download_all_docs(
+    noticeId: any[],
+    onProgress?: (current: number, total: number) => void
+  ) {
+    const token = localStorage.getItem("authToken");
+
+    if (!token) {
+      console.error("Token de autenticação não encontrado.");
+      return;
+    }
+
+    try {
+      const zip = new JSZip();
+      
+      const total = noticeId.length;
+      let current = 0;
+
+      for (const notice of noticeId) {
+        const base64Response = await invoke<string>("download_docs", {
+          noticeId: notice.id,
+          token: token,
+        });
+
+        if (!base64Response) {
+          throw new Error("Nenhuma resposta recebida do backend.");
+        }
+
+        const pdfBytes = this.base64ToUint8Array(base64Response);
+
+        const nomeArquivo = notice.name
+          ? `${notice.id} - ${notice.name}.pdf`
+          : `documento_${notice.id}.pdf`;
+        zip.file(nomeArquivo, pdfBytes);
+
+        current++;
+        if (onProgress) {
+          onProgress(current, total);
+        }
+      }
+
+      const zipContentBytes = await zip.generateAsync({ type: "uint8array" });
+
+      const filePath = await save({
+        defaultPath: "convocacoes.zip",
+        filters: [{ name: "ZIP Archive", extensions: ["zip"] }],
+      });
+
+      if (!filePath) {
+        console.warn("Download cancelado pelo usuário.");
+        return;
+      }
+
+      await writeFile(filePath, zipContentBytes);
+
+      console.log(`Todos arquivos salvos em: ${filePath}`);
     } catch (err: any) {
       console.error("Erro detalhado no GetNotices (download_docs):", err);
       throw err;

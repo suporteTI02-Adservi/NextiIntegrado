@@ -16,6 +16,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+dotenvy = "0.15.7"
 
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -28,4 +29,5 @@ base64 = "0.22.1"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2.7.0"
 dotenvy = "0.15.7"
+tauri-plugin-stronghold = "2"
 

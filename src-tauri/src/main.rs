@@ -4,7 +4,7 @@ use nextiintegrado_lib::commands;
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())     // Adicione isto
+        .plugin(tauri_plugin_fs::init()) // Adicione isto
         .plugin(tauri_plugin_dialog::init()) // Adicione isto
         .invoke_handler(tauri::generate_handler![
             commands::get_token,
