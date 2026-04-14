@@ -4,14 +4,22 @@
 
 ## 📖 Visão Geral
 
-**Nexti Integrado** é uma aplicação desktop minimalista construída com **Tauri v2** (Rust + React/TypeScript) para consulta de **documentos e convocações** de colaboradores via API Nexti (adservi).
+**Nexti Integrado** é uma aplicação desktop desenvolvida com **Tauri v2** (Rust + React/TypeScript) para consulta e **download em massa de documentos e convocações** de colaboradores via integração com a API Nexti (adservi).
+
+Para os desenvolvedores mantenedores, preparamos uma documentação focada e dividida em tópicos, explicando o funcionamento das engrenagens principais por baixo dos panos. 
+
+### 📚 Guias de Documentação Completa
+- 📍 **[Visão Geral da Arquitetura](./docs/VISAO_GERAL.md)**: Entenda o fluxo básico e por que combinamos React com Rust Tauri.
+- ⚙️ **[Backend (Tauri & Rust)](./docs/TAURI_RUST.md)**: Manuseio seguro de credenciais em `.env`, criação de comandos nativos e contorno de CORS.
+- 🎨 **[Frontend (React)](./docs/REACT_FRONTEND.md)**: Estruturação das telas em React, estado global e uso de múltiplos overlays de carregamento.
+- 🔌 **[Serviços de API (TypeScript)](./docs/SERVICES.md)**: As pontes de comunicação e a lógica detalhada da compactação e empacotamento simultâneo em formato `.zip` com instâncias nativas.
 
 ### Funcionalidades Principais
 - ✅ Busca paginada por **matrícula do colaborador**
-- ✅ Listagem de documentos/convocações em tabela limpa
-- ✅ Download direto de PDFs (salva via diálogo nativo)
-- ✅ Interface responsiva e minimalista
-- ✅ Bypass de CORS via backend Rust
+- ✅ Listagem de documentos/convocações em cards interativos
+- ✅ Visualização nativa com modal de textos integrais de comunicados
+- ✅ Download em massa (Bulk) de inúmeros PDFs comprimidos em pacote local (ZIP)
+- ✅ Maior segurança em credenciais de API gerenciado pelo backend em Rust
 
 **Fluxo Simplificado**:
 ```

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FaArrowLeft, FaArrowRight, FaCloudDownloadAlt } from "react-icons/fa";
+import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 
 import styles from "./mainPage.module.css";
 import { NoticeService } from "../../services/NoticeService";
@@ -15,7 +15,6 @@ const MainPage: React.FC = () => {
   const [documents, setDocuments] = useState<any>([]);
   const [loading, setLoading] = useState(false);
   const [downloadLoad, setDownloadLoad] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
   const [currentPage, setCurrentPage] = useState(0);
   const [hasNextPage, setHasNextPage] = useState(true);
 
@@ -137,8 +136,6 @@ const MainPage: React.FC = () => {
 
   const handleDownloadAll = async () => {
     setDownloadLoad(true);
-    setDownloadProgress({ current: 0, total: 0 });
-
     if (noticeID.length === 0) {
       showToast("Nenhum documento para baixar.");
       setDownloadLoad(false);
@@ -146,16 +143,13 @@ const MainPage: React.FC = () => {
     }
 
     try {
-      await getNoticesService.download_all_docs(noticeID, (current, total) => {
-        setDownloadProgress({ current, total });
-      });
+      await getNoticesService.download_all_docs(noticeID);
 
       showToast("Todos os documentos foram baixados com sucesso!");
+      setDownloadLoad(false);
     } catch (err: any) {
       showToast(err.message || "Erro durante o download dos documentos.");
-    } finally {
       setDownloadLoad(false);
-      setDownloadProgress({ current: 0, total: 0 });
     }
   };
 
@@ -180,103 +174,98 @@ const MainPage: React.FC = () => {
     <div className={styles.page}>
       <Header />
 
-      {/* Overlay de Loading Progressivo */}
       {downloadLoad && (
-        <div className={styles.loadingOverlay}>
-          <div className={styles.loadingCard}>
-            <h2>Baixando Documentos...</h2>
-            <p>Aguarde, estamos juntando e gerando o seu arquivo zip direto da API. Isso pode demorar alguns instantes.</p>
-            <div className={styles.progressBar}>
-              <div 
-                className={styles.progressFill} 
-                style={{ width: `${downloadProgress.total > 0 ? (downloadProgress.current / downloadProgress.total) * 100 : 0}%` }}
-              />
+        <div className={styles.page}>
+          <Header />
+          <main>
+            <div>
+              <p>
+                Baixando documentos...{" "}
+                <p>
+                  Isso pode demorar alguns minutos dependendo da quantidade de
+                  documentos.
+                </p>
+              </p>
             </div>
-            <span className={styles.progressText}>
-              {downloadProgress.current} de {downloadProgress.total} baixados
-            </span>
-          </div>
+          </main>
         </div>
       )}
-
-      <main className={styles.main}>
-        <form onSubmit={handleSearch} className={styles.form}>
-          <div className={styles.inputGroup}>
-            <label htmlFor="matricula">Matrícula</label>
-            <input
-              id="matricula"
-              type="text"
-              value={matricula}
-              onChange={handleMatriculaChange}
-              placeholder="Digite os 9 números da matrícula"
-              required
-            />
-          </div>
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={loading}
-            style={{ width: "100%" }}
-          >
-            {loading ? "Carregando..." : "Pesquisar Documentos"}
-          </Button>
-        </form>
-
-        {documents && documents.length > 0 && !loading && (
-          <section className={styles.resultsArea}>
-            <h2>Documentos do Colaborador ({documents.length})</h2>
-
-            <div className={styles.downloadAllWrapper}>
-              <Button 
-                variant="primary" 
-                onClick={handleDownloadAll}
-                disabled={loading || downloadLoad}
-                style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
-              >
-                <FaCloudDownloadAlt /> Baixar Todos ({documents.length})
-              </Button>
-            </div>
-
-            <div className={styles.cardsGrid}>
-
-              {documents.map((doc: any, idx: any) => (
-                <NoticeCard
-                  key={idx}
-                  personName={doc.personName}
-                  id={doc.id}
-                  name={doc.name}
-                  text={doc.text} // Vai passar do DB pro front, Note: O doc.text contem o HTML original!
-                  onDownload={handleDownload}
-                  onReadMore={openFullMessage}
-                  cleanHtml={cleanHtml}
+      {!downloadLoad && (
+        <>
+          <main className={styles.main}>
+            <form onSubmit={handleSearch} className={styles.form}>
+              <div className={styles.inputGroup}>
+                <label htmlFor="matricula">Matrícula</label>
+                <input
+                  id="matricula"
+                  type="text"
+                  value={matricula}
+                  onChange={handleMatriculaChange}
+                  placeholder="Digite os 9 números da matrícula"
+                  required
                 />
-              ))}
-            </div>
-
-            <div className={styles.paginationContainer}>
+              </div>
               <Button
-                variant="icon"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 0))}
-                disabled={loading || currentPage === 0}
+                variant="primary"
+                type="submit"
+                disabled={loading}
+                style={{ width: "100%" }}
               >
-                <FaArrowLeft />
+                {loading ? "Carregando..." : "Pesquisar Documentos"}
               </Button>
+            </form>
 
-              <span>
-                Página {currentPage + 1} {!hasNextPage && "(última página)"}
-              </span>
+            {documents && documents.length > 0 && !loading && (
+              <section className={styles.resultsArea}>
+                <h2>Documentos do Colaborador ({documents.length})</h2>
 
-              <Button
-                variant="icon"
-                disabled={loading || !hasNextPage}
-                onClick={() => setCurrentPage((prev) => prev + 1)}
-              >
-                <FaArrowRight />
-              </Button>
-            </div>
-          </section>
-        )}
-      </main>
+                <div className={styles.cardsGrid}>
+                  <button onClick={handleDownloadAll}>
+                    Baixar Todos ({documents.length})
+                  </button>
+
+                  {documents.map((doc: any, idx: any) => (
+                    <NoticeCard
+                      key={idx}
+                      personName={doc.personName}
+                      id={doc.id}
+                      name={doc.name}
+                      text={doc.text} // Vai passar do DB pro front, Note: O doc.text contem o HTML original!
+                      onDownload={handleDownload}
+                      onReadMore={openFullMessage}
+                      cleanHtml={cleanHtml}
+                    />
+                  ))}
+                </div>
+
+                <div className={styles.paginationContainer}>
+                  <Button
+                    variant="icon"
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(prev - 1, 0))
+                    }
+                    disabled={loading || currentPage === 0}
+                  >
+                    <FaArrowLeft />
+                  </Button>
+
+                  <span>
+                    Página {currentPage + 1} {!hasNextPage && "(última página)"}
+                  </span>
+
+                  <Button
+                    variant="icon"
+                    disabled={loading || !hasNextPage}
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
+                  >
+                    <FaArrowRight />
+                  </Button>
+                </div>
+              </section>
+            )}
+          </main>
+        </>
+      )}
 
       <MessageModal
         isOpen={isModalOpen}
