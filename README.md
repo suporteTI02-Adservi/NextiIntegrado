@@ -9,6 +9,7 @@
 Para os desenvolvedores mantenedores, preparamos uma documentação focada e dividida em tópicos, explicando o funcionamento das engrenagens principais por baixo dos panos. 
 
 ### 📚 Guias de Documentação Completa
+- 💻 **[Ambiente de Instalação (Windows)](./docs/AMBIENTE_INSTALACAO.md)**: O que instalar na sua máquina para compilar o projeto (Dev Tools, Node, Rust).
 - 📍 **[Visão Geral da Arquitetura](./docs/VISAO_GERAL.md)**: Entenda o fluxo básico e por que combinamos React com Rust Tauri.
 - ⚙️ **[Backend (Tauri & Rust)](./docs/TAURI_RUST.md)**: Manuseio seguro de credenciais em `.env`, criação de comandos nativos e contorno de CORS.
 - 🎨 **[Frontend (React)](./docs/REACT_FRONTEND.md)**: Estruturação das telas em React, estado global e uso de múltiplos overlays de carregamento.
