@@ -113,11 +113,11 @@ npm run tauri build
 ```
 
 ## ♻️ Melhorias Futuras
-- [ ] Filtro por datas
+- [x] Filtro por datas
 - [ ] Assinatura digital
-- [ ] Export múltiplo
-- [ ] Dark mode
-- [ ] Config env (tokens)
+- [x] Export múltiplo
+- [x] Dark mode
+- [x] Config env (tokens)
 
 ## 📄 Licença
 MIT - Feito com ❤️ para integração Nexti.
