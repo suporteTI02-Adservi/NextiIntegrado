@@ -27,3 +27,8 @@ dist-ssr
 .env.local
 .env.production
 .env.development
+
+
+# Added by cargo
+
+/target

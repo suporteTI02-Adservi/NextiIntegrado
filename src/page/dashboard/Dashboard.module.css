@@ -1,0 +1,239 @@
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1rem 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.welcome h2 {
+  font-size: 2rem;
+  color: var(--text-main);
+  margin-bottom: 0.5rem;
+}
+
+.welcome p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+/* Filters */
+.filters {
+  display: flex;
+  gap: 1rem;
+  background: var(--bg-glass);
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filterGroup label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.filterGroup input, .filterGroup select {
+  padding: 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-solid);
+  background-color: var(--bg-field);
+  color: var(--text-main);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filterGroup input:focus, .filterGroup select:focus {
+  border-color: var(--header-text);
+  box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+}
+
+.filterGroup input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.filterGroup select option {
+  background-color: var(--bg-field);
+  color: var(--text-main);
+}
+
+/* Grid & Cards (from Extracoes) */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--bg-glass);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px var(--shadow-dark);
+  border: 1px solid var(--border-glass);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.matricula {
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: var(--text-main);
+}
+
+.status {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statusPending {
+  background: #f39c12;
+  color: #fff;
+}
+
+.statusSuccess {
+  background: #27ae60;
+  color: #fff;
+}
+
+.statusError {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.nome {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.dateInfo {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.errorMsg {
+  color: #e74c3c;
+  font-size: 0.9rem;
+  background: rgba(231, 76, 60, 0.1);
+  padding: 0.5rem;
+  border-radius: 6px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+  background: var(--bg-glass);
+  border-radius: 16px;
+  border: 1px dashed var(--border-solid);
+}
+
+.typeBadge {
+  display: inline-flex;
+}
+
+.badgeDoc, .badgeConv {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.badgeDoc {
+  background: rgba(155, 89, 182, 0.1);
+  color: #9b59b6;
+  border: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+.badgeConv {
+  background: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+  border: 1px solid rgba(52, 152, 219, 0.2);
+}
+
+.badgeHolerite {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  background: rgba(39, 174, 96, 0.1);
+  color: #27ae60;
+  border: 1px solid rgba(39, 174, 96, 0.2);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stepInfo {
+  background: rgba(243, 156, 18, 0.1);
+  border-left: 3px solid #f39c12;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: var(--text-main);
+}
+
+.cardActions {
+  margin-top: auto;
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-solid);
+}
+
+.pulseBar {
+  height: 6px;
+  background: linear-gradient(90deg, transparent, #3498db, transparent);
+  background-size: 200% 100%;
+  animation: pulseMove 1.5s infinite linear;
+  border-radius: 3px;
+  width: 100%;
+}
+
+@keyframes pulseMove {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

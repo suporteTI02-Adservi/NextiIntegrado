@@ -20,7 +20,7 @@
   box-shadow: 
     0 25px 50px -12px rgba(0, 0, 0, 0.5),
     inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+  border-radius: var(--border-radius);
   width: 90%;
   max-width: 700px;
   max-height: 85vh;
@@ -70,7 +70,7 @@
 .modalBody img {
   max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   margin: 1rem 0;
 }
 

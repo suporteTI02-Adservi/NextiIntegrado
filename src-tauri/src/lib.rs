@@ -148,4 +148,242 @@ pub mod commands {
 
         Ok(Value::String(encoded))
     }
+
+    #[tauri::command]
+    pub async fn generate_soap_report(xml_payload: String) -> Result<String, String> {
+        let client = reqwest::Client::new();
+        let url = "http://snrsj:8080/g5-senior-services/rubi_Synccom.senior.g5.rh.fp.Relatorios";
+
+        let res = client
+            .post(url)
+            .header("Content-Type", "text/xml;charset=UTF-8")
+            .body(xml_payload)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let status = res.status();
+        let text = res.text().await.map_err(|e| e.to_string())?;
+
+        if !status.is_success() {
+            return Err(format!("Erro na requisição SOAP: Status {}\nDetalhes: {}", status, text));
+        }
+
+        Ok(text)
+    }
+    #[tauri::command]
+    pub async fn consult_collaborator_soap(xml_payload: String) -> Result<String, String> {
+        let client = reqwest::Client::new();
+        let url = "http://snrsj:8080/g5-senior-services/rubi_Synccom.senior.g5.rh.fp.USUColaborador";
+
+        let res = client
+            .post(url)
+            .header("Content-Type", "text/xml;charset=UTF-8")
+            .body(xml_payload)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let status = res.status();
+        let text = res.text().await.map_err(|e| e.to_string())?;
+
+        if !status.is_success() {
+            return Err(format!("Erro na requisição SOAP (USUColaborador): Status {}\nDetalhes: {}", status, text));
+        }
+
+        Ok(text)
+    }
+
+    use tauri::{AppHandle, Manager};
+    use rusqlite::{Connection, params};
+    use std::path::PathBuf;
+
+    fn get_db_path(app_handle: &AppHandle) -> PathBuf {
+        let mut path = app_handle.path().app_data_dir().unwrap_or_else(|_| {
+            std::env::current_dir().unwrap_or_default()
+        });
+        // Certifica que a pasta de dados do app existe
+        let _ = std::fs::create_dir_all(&path);
+        path.push("nexti_integrado.db");
+        path
+    }
+
+    pub fn init_db(app_handle: &AppHandle) -> Result<(), String> {
+        let db_path = get_db_path(app_handle);
+        let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+        
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                task_type TEXT NOT NULL,
+                matricula TEXT NOT NULL,
+                nome TEXT,
+                status TEXT NOT NULL,
+                step TEXT NOT NULL,
+                error_msg TEXT,
+                results_json TEXT,
+                updated_at INTEGER NOT NULL
+            )",
+            [],
+        ).map_err(|e| e.to_string())?;
+        
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub async fn save_task_db(
+        app_handle: AppHandle,
+        id: String,
+        task_type: String,
+        matricula: String,
+        nome: Option<String>,
+        status: String,
+        step: String,
+        error_msg: Option<String>,
+        results_json: Option<String>,
+    ) -> Result<(), String> {
+        let db_path = get_db_path(&app_handle);
+        let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+        
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as i64;
+
+        if results_json.is_some() {
+            conn.execute(
+                "INSERT INTO tasks (id, task_type, matricula, nome, status, step, error_msg, results_json, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                 ON CONFLICT(id) DO UPDATE SET
+                    nome = excluded.nome,
+                    status = excluded.status,
+                    step = excluded.step,
+                    error_msg = excluded.error_msg,
+                    results_json = excluded.results_json,
+                    updated_at = excluded.updated_at",
+                params![id, task_type, matricula, nome, status, step, error_msg, results_json, now],
+            ).map_err(|e| e.to_string())?;
+        } else {
+            conn.execute(
+                "INSERT INTO tasks (id, task_type, matricula, nome, status, step, error_msg, results_json, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, ?8)
+                 ON CONFLICT(id) DO UPDATE SET
+                    nome = excluded.nome,
+                    status = excluded.status,
+                    step = excluded.step,
+                    error_msg = excluded.error_msg,
+                    updated_at = excluded.updated_at",
+                params![id, task_type, matricula, nome, status, step, error_msg, now],
+            ).map_err(|e| e.to_string())?;
+        }
+
+        Ok(())
+    }
+
+    #[tauri::command]
+    pub async fn get_tasks_db(app_handle: AppHandle) -> Result<serde_json::Value, String> {
+        let db_path = get_db_path(&app_handle);
+        let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+        
+        let mut stmt = conn
+            .prepare("SELECT id, task_type, matricula, nome, status, step, error_msg, updated_at FROM tasks ORDER BY updated_at DESC")
+            .map_err(|e| e.to_string())?;
+            
+        let task_iter = stmt.query_map([], |row| {
+            let id: String = row.get(0)?;
+            let task_type: String = row.get(1)?;
+            let matricula: String = row.get(2)?;
+            let nome: Option<String> = row.get(3)?;
+            let status: String = row.get(4)?;
+            let step: String = row.get(5)?;
+            let error_msg: Option<String> = row.get(6)?;
+            let updated_at: i64 = row.get(7)?;
+            
+            Ok(serde_json::json!({
+                "id": id,
+                "task_type": task_type,
+                "matricula": matricula,
+                "nome": nome,
+                "status": status,
+                "step": step,
+                "error_msg": error_msg,
+                "updated_at": updated_at
+            }))
+        }).map_err(|e| e.to_string())?;
+
+        let mut tasks = Vec::new();
+        for task in task_iter {
+            tasks.push(task.map_err(|e| e.to_string())?);
+        }
+
+        Ok(serde_json::Value::Array(tasks))
+    }
+
+    #[tauri::command]
+    pub async fn get_task_results_db(app_handle: AppHandle, id: String) -> Result<Option<String>, String> {
+        let db_path = get_db_path(&app_handle);
+        let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+        
+        let mut stmt = conn
+            .prepare("SELECT results_json FROM tasks WHERE id = ?1")
+            .map_err(|e| e.to_string())?;
+            
+        let mut rows = stmt.query(params![id]).map_err(|e| e.to_string())?;
+        if let Some(row) = rows.next().map_err(|e| e.to_string())? {
+            let results_json: Option<String> = row.get(0).map_err(|e| e.to_string())?;
+            Ok(results_json)
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[tauri::command]
+    pub async fn delete_task_db(app_handle: AppHandle, id: String) -> Result<(), String> {
+        let db_path = get_db_path(&app_handle);
+        let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
+        
+        conn.execute("DELETE FROM tasks WHERE id = ?1", params![id])
+            .map_err(|e| e.to_string())?;
+            
+        Ok(())
+    }
+
+    /// Salva um PDF (recebido como base64) em disco, retornando o caminho absoluto.
+    /// Armazena em {app_data_dir}/pdfs/{sub_folder}/{file_name}
+    #[tauri::command]
+    pub async fn save_pdf_file(
+        app_handle: AppHandle,
+        base64_data: String,
+        file_name: String,
+        sub_folder: String,
+    ) -> Result<String, String> {
+        let mut dir = app_handle.path().app_data_dir().unwrap_or_else(|_| {
+            std::env::current_dir().unwrap_or_default()
+        });
+        dir.push("pdfs");
+        dir.push(&sub_folder);
+        let _ = std::fs::create_dir_all(&dir);
+
+        dir.push(&file_name);
+
+        let bytes = general_purpose::STANDARD
+            .decode(base64_data.replace("\r", "").replace("\n", "").replace(" ", ""))
+            .map_err(|e| format!("Erro ao decodificar base64: {}", e))?;
+
+        std::fs::write(&dir, &bytes)
+            .map_err(|e| format!("Erro ao salvar arquivo PDF: {}", e))?;
+
+        Ok(dir.to_string_lossy().to_string())
+    }
+
+    /// Lê um arquivo PDF do disco e retorna seu conteúdo como base64.
+    #[tauri::command]
+    pub async fn read_pdf_file(file_path: String) -> Result<String, String> {
+        let bytes = std::fs::read(&file_path)
+            .map_err(|e| format!("Erro ao ler arquivo PDF '{}': {}", file_path, e))?;
+
+        let encoded = general_purpose::STANDARD.encode(&bytes);
+        Ok(encoded)
+    }
 }
+

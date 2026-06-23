@@ -31,12 +31,22 @@ export class NoticeService {
           "Erro de comunicação com o núcleo do Tauri. Tente reiniciar a aplicação pelo terminal.",
         );
       }
+
+      throw new Error(
+        typeof err === "string"
+          ? err
+          : err?.message || "Falha ao buscar colaborador."
+      );
     }
   }
 
   async getDocuments(matricula: number, page: number = 0): Promise<any[]> {
     const token = await new AuthService().getToken();
     const id = await this.getColab(matricula);
+
+    if (!id) {
+      throw new Error("Não foi possível obter o ID do colaborador.");
+    }
 
     try {
       const response = await invoke<any>("get_documents", {
@@ -64,12 +74,14 @@ export class NoticeService {
       // Se for um erro de ambiente (TypeError), damos uma instrução mais clara
       if (err instanceof TypeError && err.message.includes("invoke")) {
         throw new Error(
-          "Erro de comunicação com o núcleo do Tauri. Tente reiniciar a aplicação.",
+          "Erro de comunicação com o núcleo do Tauri. Tente reiniciar a aplicação."
         );
       }
 
       throw new Error(
-        "Erro no sistema. Entre em contato com o desenvolvedor: suporte.ti02@grupoadservi.com.br"
+        typeof err === "string"
+          ? err
+          : err?.message || "Erro no sistema. Entre em contato com o desenvolvedor: suporte.ti02@grupoadservi.com.br"
       );
     }
   }

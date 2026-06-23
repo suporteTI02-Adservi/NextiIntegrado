@@ -3,6 +3,14 @@
   "productName": "nextiintegrado",
   "version": "1.0.0",
   "identifier": "com.nexti.integrado",
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgyMDkxMzgwRjc4OTIxQkEKUldTNklZbjNnQk1KZ3Z2UzNLaUV1K3NEV1ArQWYzdXo0REVINGZPUXZuSkUrUkpldEtHNCtIeE4K",
+      "endpoints": [
+        "https://github.com/suporteTI02-Adservi/NextiIntegrado/releases/latest/download/updater.json"
+      ]
+    }
+  },
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -23,8 +31,12 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
-    "resources": ["resources/*"],
+    "targets": [
+      "nsis"
+    ],
+    "resources": [
+      "resources/*"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
