@@ -1,8 +1,10 @@
 import { PDFDocument } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Usar o próprio worker embutido ou desativar para evitar problemas de CORS/Vite
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+
+// Configurar o worker do pdfjs-dist usando o recurso de URL do Vite
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export interface PdfChunk {
   title: string;
@@ -35,9 +37,12 @@ export async function splitHoleritePdf(
 
       const newPdfBytes = await newPdfDoc.save();
       const newPdfBlob = new Blob([newPdfBytes as any], { type: 'application/pdf' });
-      const newPdfBase64 = btoa(
-        Array.from(newPdfBytes).map((byte) => String.fromCharCode(byte)).join('')
-      );
+      let binary = '';
+      const len = newPdfBytes.byteLength;
+      for (let j = 0; j < len; j++) {
+        binary += String.fromCharCode(newPdfBytes[j]);
+      }
+      const newPdfBase64 = btoa(binary);
 
       let pageLabel = `Página ${i + 1}`;
       let monthString = "Desconhecido";
@@ -47,11 +52,23 @@ export async function splitHoleritePdf(
         const textContent = await page.getTextContent();
         const textItems = textContent.items.map((item: any) => item.str).join(' ');
 
-        // Exemplo de regex para encontrar o mês/ano do holerite
-        const monthMatch = textItems.match(/(?:Referência[:\s]*|)(\d{2}\/\d{4})/i);
-        if (monthMatch && monthMatch[1]) {
-          pageLabel = monthMatch[1];
-          monthString = monthMatch[1];
+        // Procura por Competência, Referência ou Mês/Ano explícito
+        const exactMatch = textItems.match(/(?:Refer[êe]ncia|Compet[êe]ncia|M[êe]s\/Ano)[:\s-]*(\d{2}\/\d{4})/i);
+        
+        if (exactMatch && exactMatch[1]) {
+          pageLabel = exactMatch[1];
+          monthString = exactMatch[1];
+        } else {
+          // Fallback: pega todas as datas mm/yyyy ou dd/mm/yyyy
+          const allDates = [...textItems.matchAll(/(\d{2}\/\d{4})/g)];
+          if (allDates.length > 0) {
+            // Em holerites Senior, a primeira data geralmente é a admissão e a última pode ser a de impressão.
+            // A competência costuma ser a 2ª ou 3ª data (ex: Admissão, Competência, Data Pgto).
+            // Vamos assumir a 2ª data se houver mais de uma, senão a 1ª.
+            const targetDate = allDates.length > 1 ? allDates[1][1] : allDates[0][1];
+            pageLabel = targetDate;
+            monthString = targetDate;
+          }
         }
       } catch (e) {
         console.warn("Erro ao extrair texto da página", i, e);

@@ -9,6 +9,7 @@
 Para os desenvolvedores mantenedores, preparamos uma documentação focada e dividida em tópicos, explicando o funcionamento das engrenagens principais por baixo dos panos. 
 
 ### 📚 Guias de Documentação Completa
+- 👑 **[Guia Mestre de Manutenção (Handover)](./docs/GUIA_DE_MANUTENCAO.md)**: **LEIA PRIMEIRO!** Guia feito para quem vai assumir o projeto (humanos ou IAs), explicando o status das coisas, onde continuar, e as armadilhas a evitar.
 - 💻 **[Ambiente de Instalação (Windows)](./docs/AMBIENTE_INSTALACAO.md)**: O que instalar na sua máquina para compilar o projeto (Dev Tools, Node, Rust).
 - 📍 **[Visão Geral da Arquitetura](./docs/VISAO_GERAL.md)**: Entenda o fluxo básico e por que combinamos React com Rust Tauri.
 - ⚙️ **[Backend (Tauri & Rust)](./docs/TAURI_RUST.md)**: Manuseio seguro de credenciais em `.env`, criação de comandos nativos e contorno de CORS.

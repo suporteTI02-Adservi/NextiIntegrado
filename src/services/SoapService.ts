@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type ReportType = "AFASTAMENTOS" | "CTPS" | "HOLERITE";
+export type ReportType = "AFASTAMENTOS" | "CTPS" | "HOLERITE" | "COMPROVANTE_BANCARIO" | "CTPS_DIGITAL";
 
 export class SoapService {
   /**
@@ -23,6 +23,24 @@ export class SoapService {
     } else if (type === "CTPS") {
       prRelatorio = "FPFR202.COL";
       prEntradaInner = `<ELisCol=3><EDatIni=01/01/2000><EDatRef=31/12/2050><EIniSit=01/01/2000><EFimSit=31/12/2050><EAbrEmp=${empresa}><EAbrCad=${matricula}>`;
+    } else if (type === "COMPROVANTE_BANCARIO") {
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const todayStr = `${day}/${month}/${year}`;
+      
+      prRelatorio = "FPDO501.COL"; // FPDO501 was generating Comprovante Bancário
+      prEntradaInner = `<EDatRef=${todayStr}><EAbrEmp=${empresa}><EAbrCad=${matricula}><EGerArq=N>`;
+    } else if (type === "CTPS_DIGITAL") {
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const todayStr = `${day}/${month}/${year}`;
+      
+      prRelatorio = "FPDO504.COL";
+      prEntradaInner = `<EDatRef=${todayStr}><EAbrEmp=${empresa}><EAbrCad=${matricula}><EGerArq=N>`;
     }
 
     // Usa CDATA para não precisar escapar os caracteres < e >
@@ -75,13 +93,19 @@ export class SoapService {
       const prRetornoMatch = responseXml.match(/<prRetorno>([\s\S]*?)<\/prRetorno>/);
       
       if (!prRetornoMatch || !prRetornoMatch[1]) {
+        // Verifica erroExecucao
+        const erroMatch = responseXml.match(/<erroExecucao[^>]*>([\s\S]*?)<\/erroExecucao>/);
+        if (erroMatch && erroMatch[1] && erroMatch[1].trim().length > 0) {
+          throw new Error(`Erro de execução no Senior para o relatório ${type}: ${erroMatch[1].trim()}`);
+        }
+
         // Verifica se há alguma mensagem de erro do Senior
         const mensagemMatch = responseXml.match(/<prMensagem>([\s\S]*?)<\/prMensagem>/);
         if (mensagemMatch && mensagemMatch[1]) {
           throw new Error(`Erro do servidor no relatório ${type}: ${mensagemMatch[1]}`);
         }
         
-        throw new Error(`Não foi possível encontrar o relatório ${type} na resposta do servidor.`);
+        throw new Error(`Não foi possível encontrar o relatório ${type} na resposta do servidor. Resposta bruta: ${responseXml.substring(0, 500)}`);
       }
 
       // Remove quebras de linha e espaços da string base64, que podem vir no XML

@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { SoapService, ReportType } from '../services/SoapService';
 import { NoticeService } from '../services/NoticeService';
 import { invoke } from '@tauri-apps/api/core';
-import { splitHoleritePdf } from '../utils/pdfUtils';
 
 export interface ReportData {
   type: ReportType | string;
@@ -70,7 +69,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [userCredentials, setUserCredentialsState] = useState<{ usuario: string; senha: string } | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [resultsCache, setResultsCache] = useState<Record<string, any>>({});
-  
+
   const soapService = new SoapService();
   const noticeService = new NoticeService();
 
@@ -140,7 +139,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     const taskId = `documento_${matricula}`;
-    
+
     // 1. Iniciar tarefa no SQLite
     await saveTask(taskId, 'documento', matricula, null, 'PENDING', 'Consultando colaborador no Senior...');
 
@@ -156,65 +155,139 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando relatório de Afastamentos...');
 
       // 3. Buscar relatórios
-      const blobAfastamentos = await soapService.getReport("AFASTAMENTOS", userCredentials.usuario, userCredentials.senha, matricula);
-      
-      await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando ficha CTPS...');
-      
-      const blobCTPS = await soapService.getReport("CTPS", userCredentials.usuario, userCredentials.senha, matricula);
+      let blobAfastamentos: Blob | null = null;
+      try {
+        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando relatório de Afastamentos...');
+        blobAfastamentos = await soapService.getReport("AFASTAMENTOS", userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) { console.warn("Erro Afastamentos:", e); }
+
+      let blobCTPS: Blob | null = null;
+      try {
+        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando ficha CTPS...');
+        blobCTPS = await soapService.getReport("CTPS", userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) { console.warn("Erro CTPS:", e); }
+
+      let blobComprovante: Blob | null = null;
+      try {
+        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando Comprovante Bancário...');
+        blobComprovante = await soapService.getReport("COMPROVANTE_BANCARIO", userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) { console.warn("Erro Comprovante:", e); }
+
+      let blobCTPSDigital: Blob | null = null;
+      try {
+        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando CTPS Digital...');
+        blobCTPSDigital = await soapService.getReport("CTPS_DIGITAL", userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) { console.warn("Erro CTPS Digital:", e); }
 
       await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Salvando relatórios localmente...');
 
       // Converter blobs para base64 para persistir no SQLite
-      const base64Afastamentos = await blobToBase64(blobAfastamentos);
-      const base64CTPS = await blobToBase64(blobCTPS);
+      const base64Afastamentos = blobAfastamentos ? await blobToBase64(blobAfastamentos) : null;
+      const base64CTPS = blobCTPS ? await blobToBase64(blobCTPS) : null;
+      const base64Comprovante = blobComprovante ? await blobToBase64(blobComprovante) : null;
+      const base64CTPSDigital = blobCTPSDigital ? await blobToBase64(blobCTPSDigital) : null;
 
       // Salvar PDFs em disco usando o novo comando Rust (otimização)
       let pathAfastamentos: string | null = null;
       let pathCTPS: string | null = null;
+      let pathComprovante: string | null = null;
+      let pathCTPSDigital: string | null = null;
       try {
-        pathAfastamentos = await invoke<string>("save_pdf_file", {
-          base64Data: base64Afastamentos,
-          fileName: `${matricula}_Afastamentos.pdf`,
-          subFolder: matricula,
-        });
-        pathCTPS = await invoke<string>("save_pdf_file", {
-          base64Data: base64CTPS,
-          fileName: `${matricula}_CTPS.pdf`,
-          subFolder: matricula,
-        });
+        if (base64Afastamentos) {
+          pathAfastamentos = await invoke<string>("save_pdf_file", {
+            base64Data: base64Afastamentos,
+            fileName: `${matricula}_Afastamentos.pdf`,
+            subFolder: matricula,
+          });
+        }
+        if (base64CTPS) {
+          pathCTPS = await invoke<string>("save_pdf_file", {
+            base64Data: base64CTPS,
+            fileName: `${matricula}_CTPS.pdf`,
+            subFolder: matricula,
+          });
+        }
+        if (base64Comprovante) {
+          pathComprovante = await invoke<string>("save_pdf_file", {
+            base64Data: base64Comprovante,
+            fileName: `${matricula}_Comprovante_Bancario.pdf`,
+            subFolder: matricula,
+          });
+        }
+        if (base64CTPSDigital) {
+          pathCTPSDigital = await invoke<string>("save_pdf_file", {
+            base64Data: base64CTPSDigital,
+            fileName: `${matricula}_CTPS_Digital.pdf`,
+            subFolder: matricula,
+          });
+        }
       } catch (e) {
         console.warn("Não foi possível salvar PDFs em disco, usando base64 inline:", e);
       }
 
       // Payload com caminhos de arquivo em vez de base64 gigante
-      const resultsPayload = [
-        { 
-          type: "AFASTAMENTOS", 
-          title: "Afastamentos do Colaborador", 
-          ...(pathAfastamentos ? { filePath: pathAfastamentos } : { base64: base64Afastamentos })
-        },
-        { 
-          type: "CTPS", 
-          title: "Ficha CTPS do Colaborador", 
-          ...(pathCTPS ? { filePath: pathCTPS } : { base64: base64CTPS })
-        }
-      ];
+      const resultsPayload: any[] = [];
+      const reports: ReportData[] = [];
 
-      // Reconstruir no cache em memória com URLs
-      const reports: ReportData[] = [
-        {
+      if (base64Afastamentos) {
+        resultsPayload.push({
+          type: "AFASTAMENTOS",
+          title: "Afastamentos do Colaborador",
+          ...(pathAfastamentos ? { filePath: pathAfastamentos } : { base64: base64Afastamentos })
+        });
+        reports.push({
           type: "AFASTAMENTOS",
           title: "Afastamentos do Colaborador",
           blob: blobAfastamentos,
-          url: URL.createObjectURL(blobAfastamentos)
-        },
-        {
+          url: URL.createObjectURL(blobAfastamentos!)
+        });
+      }
+
+      if (base64CTPS) {
+        resultsPayload.push({
+          type: "CTPS",
+          title: "Ficha CTPS do Colaborador",
+          ...(pathCTPS ? { filePath: pathCTPS } : { base64: base64CTPS })
+        });
+        reports.push({
           type: "CTPS",
           title: "Ficha CTPS do Colaborador",
           blob: blobCTPS,
-          url: URL.createObjectURL(blobCTPS)
-        }
-      ];
+          url: URL.createObjectURL(blobCTPS!)
+        });
+      }
+
+      if (base64Comprovante) {
+        resultsPayload.push({
+          type: "COMPROVANTE_BANCARIO",
+          title: "Comprovante Bancário",
+          ...(pathComprovante ? { filePath: pathComprovante } : { base64: base64Comprovante })
+        });
+        reports.push({
+          type: "COMPROVANTE_BANCARIO",
+          title: "Comprovante Bancário",
+          blob: blobComprovante,
+          url: URL.createObjectURL(blobComprovante!)
+        });
+      }
+
+      if (base64CTPSDigital) {
+        resultsPayload.push({
+          type: "CTPS_DIGITAL",
+          title: "CTPS Digital",
+          ...(pathCTPSDigital ? { filePath: pathCTPSDigital } : { base64: base64CTPSDigital })
+        });
+        reports.push({
+          type: "CTPS_DIGITAL",
+          title: "CTPS Digital",
+          blob: blobCTPSDigital,
+          url: URL.createObjectURL(blobCTPSDigital!)
+        });
+      }
+
+      if (resultsPayload.length === 0) {
+        throw new Error("Nenhum documento pôde ser encontrado para este colaborador.");
+      }
 
       setResultsCache(prev => ({ ...prev, [taskId]: reports }));
 
@@ -250,7 +323,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const resultsPayload: any[] = [];
       const reports: ReportData[] = [];
-      
+
       try {
         const resultNormal = await soapService.getHolerite(userCredentials.usuario, userCredentials.senha, matricula, false);
 
@@ -272,18 +345,15 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           ...(pathNormal ? { filePath: pathNormal } : { base64: resultNormal.base64 })
         });
 
-        // Dividir em pedaços para a UI
-        const chunks = await splitHoleritePdf(resultNormal.base64, false);
-        for (const chunk of chunks) {
-          reports.push({
-            type: "HOLERITE",
-            title: chunk.title,
-            blob: chunk.blob,
-            url: URL.createObjectURL(chunk.blob),
-            isDecimoTerceiro: chunk.isDecimoTerceiro,
-            monthString: chunk.monthString
-          });
-        }
+        // Passar o PDF consolidado diretamente para a UI
+        const blobNormal = base64ToBlob(resultNormal.base64, "application/pdf");
+        reports.push({
+          type: "HOLERITE_CONSOLIDADO",
+          title: "Histórico de Holerites",
+          blob: blobNormal,
+          url: URL.createObjectURL(blobNormal),
+          isDecimoTerceiro: false,
+        });
       } catch (e: any) {
         console.warn(`Aviso: Erro ao buscar histórico de holerites normais: ${e.message}`);
       }
@@ -311,18 +381,15 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           ...(pathDecimo ? { filePath: pathDecimo } : { base64: resultDecimo.base64 })
         });
 
-        // Dividir em pedaços para a UI
-        const chunks = await splitHoleritePdf(resultDecimo.base64, true);
-        for (const chunk of chunks) {
-          reports.push({
-            type: "HOLERITE",
-            title: chunk.title,
-            blob: chunk.blob,
-            url: URL.createObjectURL(chunk.blob),
-            isDecimoTerceiro: chunk.isDecimoTerceiro,
-            monthString: chunk.monthString
-          });
-        }
+        // Passar o PDF consolidado diretamente para a UI
+        const blobDecimo = base64ToBlob(resultDecimo.base64, "application/pdf");
+        reports.push({
+          type: "DECIMO_CONSOLIDADO",
+          title: "Histórico de 13º Salário",
+          blob: blobDecimo,
+          url: URL.createObjectURL(blobDecimo),
+          isDecimoTerceiro: true,
+        });
       } catch (e: any) {
         console.warn(`Aviso: Erro ao buscar histórico de 13º salário: ${e.message}`);
       }
@@ -355,7 +422,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       await saveTask(taskId, 'convocacao', matricula, null, 'PENDING', 'Buscando nome do colaborador no Senior...');
-      
+
       // Buscar dados adicionais do colaborador para obter o nome
       let nome: string | null = null;
       if (userCredentials) {
@@ -381,7 +448,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       // 2. Buscar convocações
       const response = await noticeService.getDocuments(Number(matricula), 0);
-      
+
       let documentsList: any[] = [];
       if (response && Array.isArray(response)) {
         documentsList = response.map((doc: any) => ({
@@ -406,7 +473,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const deleteTask = async (id: string) => {
     try {
       await invoke("delete_task_db", { id });
-      
+
       // Revogar URLs do cache se houver
       const cached = resultsCache[id];
       if (cached && Array.isArray(cached)) {
@@ -414,7 +481,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (r.url) URL.revokeObjectURL(r.url);
         });
       }
-      
+
       setResultsCache(prev => {
         const next = { ...prev };
         delete next[id];
@@ -439,37 +506,32 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const parsed = JSON.parse(jsonStr);
 
       if (id.startsWith('documento_') || id.startsWith('holerite_')) {
-        // Reconstrói Blobs e Blob URLs a partir de base64 ou filePath
-        const reports = await Promise.all(parsed.map(async (r: any) => {
+        const allReports: any[] = [];
+        for (const r of parsed) {
+          let base64 = r.base64;
           if (r.filePath) {
-            // Carregar do disco via comando Rust
             try {
-              const base64 = await invoke<string>("read_pdf_file", { filePath: r.filePath });
-              const blob = base64ToBlob(base64, "application/pdf");
-              return {
-                type: r.type,
-                title: r.title,
-                blob: blob,
-                url: URL.createObjectURL(blob)
-              };
+              base64 = await invoke<string>("read_pdf_file", { filePath: r.filePath });
             } catch (e) {
               console.error("Erro ao carregar PDF do disco:", e);
-              return { type: r.type, title: r.title, blob: null, url: null };
+              continue;
             }
-          } else if (r.base64) {
-            const blob = base64ToBlob(r.base64, "application/pdf");
-            return {
-              type: r.type,
-              title: r.title,
-              blob: blob,
-              url: URL.createObjectURL(blob)
-            };
           }
-          return r;
-        }));
 
-        setResultsCache(prev => ({ ...prev, [id]: reports }));
-        return reports;
+          if (!base64) continue;
+
+          // Sem separação, renderiza o PDF consolidado diretamente
+          const blob = base64ToBlob(base64, "application/pdf");
+          allReports.push({
+            type: r.type,
+            title: r.title,
+            blob: blob,
+            url: URL.createObjectURL(blob)
+          });
+        }
+
+        setResultsCache(prev => ({ ...prev, [id]: allReports }));
+        return allReports;
       } else {
         // Para convocação, retorna a lista de documentos diretamente
         setResultsCache(prev => ({ ...prev, [id]: parsed }));

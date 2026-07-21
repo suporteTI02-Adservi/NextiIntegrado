@@ -20,10 +20,6 @@ const Documentos: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedReportUrl, setSelectedReportUrl] = useState<string | null>(null);
   const [reports, setReports] = useState<ReportData[]>([]);
-  
-  // Filtros de Holerite
-  const [filterMonth, setFilterMonth] = useState<string>('');
-  const [filterType, setFilterType] = useState<string>('TODOS'); // 'TODOS', 'NORMAL', 'DECIMO'
 
   const { showToast } = useToast();
 
@@ -98,7 +94,7 @@ const Documentos: React.FC = () => {
       if (window.innerWidth < 768) {
         setIsSidebarOpen(false); // Fecha no mobile
       }
-      
+
       // Inicia a extração assíncrona em background
       if (isHoleriteMode) {
         startHoleriteExtraction(matriculaInput).catch(err => {
@@ -125,7 +121,7 @@ const Documentos: React.FC = () => {
       const selectedDir = await open({
         directory: true,
         multiple: false,
-        title: isHoleriteMode 
+        title: isHoleriteMode
           ? "Selecione a pasta para salvar os holerites"
           : "Selecione a pasta para salvar os relatórios"
       });
@@ -138,7 +134,7 @@ const Documentos: React.FC = () => {
             if (payload.type === "HOLERITE_CONSOLIDADO" || payload.type === "DECIMO_CONSOLIDADO") {
               let fileName = payload.title.replace(/\//g, '-');
               fileName = `${matriculaAtual} - ${fileName}.pdf`;
-              
+
               if (payload.filePath) {
                 // Ler do disco e copiar para a pasta destino
                 const fileData = await readFile(payload.filePath);
@@ -150,7 +146,7 @@ const Documentos: React.FC = () => {
                 const len = binaryString.length;
                 const bytes = new Uint8Array(len);
                 for (let i = 0; i < len; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
+                  bytes[i] = binaryString.charCodeAt(i);
                 }
                 const filePath = await join(selectedDir, fileName);
                 await writeFile(filePath, bytes);
@@ -163,9 +159,17 @@ const Documentos: React.FC = () => {
             if (!report.blob) continue;
 
             let fileName: string;
-            fileName = report.type === "AFASTAMENTOS" 
-              ? `${matriculaAtual} - Afastamentos.pdf` 
-              : `${matriculaAtual} - CTPS.pdf`;
+            if (report.type === "AFASTAMENTOS") {
+              fileName = `${matriculaAtual} - Afastamentos.pdf`;
+            } else if (report.type === "CTPS") {
+              fileName = `${matriculaAtual} - CTPS.pdf`;
+            } else if (report.type === "COMPROVANTE_BANCARIO") {
+              fileName = `${matriculaAtual} - Comprovante Bancario.pdf`;
+            } else if (report.type === "CTPS_DIGITAL") {
+              fileName = `${matriculaAtual} - CTPS Digital.pdf`;
+            } else {
+              fileName = `${matriculaAtual} - ${report.title}.pdf`;
+            }
 
             const arrayBuffer = await report.blob.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
@@ -188,22 +192,22 @@ const Documentos: React.FC = () => {
 
   const pageTitle = isHoleriteMode ? "Consulta de Holerites" : "Consulta de Documentos";
   const pageIcon = isHoleriteMode ? <FaMoneyBillWave size={64} color="var(--text-secondary)" opacity={0.5} /> : <FaFilePdf size={64} color="var(--text-secondary)" opacity={0.5} />;
-  const emptyMsg = isHoleriteMode 
-    ? "Nenhum holerite selecionado" 
+  const emptyMsg = isHoleriteMode
+    ? "Nenhum holerite selecionado"
     : "Nenhum documento selecionado";
   const emptyDesc = isHoleriteMode
     ? "Insira a matrícula do colaborador no painel lateral para buscar o histórico completo de holerites."
     : "Selecione uma extração ativa ou inicie uma nova consulta no painel lateral.";
   const loadingTitle = isHoleriteMode ? "Extraindo Histórico de Holerites..." : "Extraindo Relatórios...";
-  const loadingDesc = isHoleriteMode 
+  const loadingDesc = isHoleriteMode
     ? "O sistema está buscando todo o histórico de holerites do colaborador. Aguarde."
     : "O processo está rodando em segundo plano. Você pode consultar outras matrículas enquanto espera.";
 
   return (
     <div className={styles.layoutContainer}>
       {/* Botão para alternar a Sidebar */}
-      <button 
-        className={styles.toggleBtn} 
+      <button
+        className={styles.toggleBtn}
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         title={isSidebarOpen ? "Recolher Painel" : "Expandir Painel"}
       >
@@ -212,7 +216,7 @@ const Documentos: React.FC = () => {
 
       {/* Sidebar (Formulário) */}
       <aside className={`${styles.sidebar} ${!isSidebarOpen ? styles.sidebarCollapsed : ''}`}>
-        <h2 style={{marginTop: '2rem'}}>{pageTitle}</h2>
+        <h2 style={{ marginTop: '2rem' }}>{pageTitle}</h2>
         <form onSubmit={handleGenerate} className={styles.form}>
           {!userCredentials && (
             <>
@@ -259,7 +263,7 @@ const Documentos: React.FC = () => {
         </form>
 
         {userCredentials && (
-          <p style={{fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '1rem'}}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '1rem' }}>
             Credenciais salvas. Para alterar, limpe os dados ou reinicie a sessão.
           </p>
         )}
@@ -301,53 +305,20 @@ const Documentos: React.FC = () => {
         {currentTask && currentTask.status === 'SUCCESS' && reports.length > 0 && (
           <section className={styles.resultsArea}>
             <h2>
-              {isHoleriteMode 
-                ? `Holerites Encontrados (${currentTask.matricula})` 
+              {isHoleriteMode
+                ? `Holerites Encontrados (${currentTask.matricula})`
                 : `Documentos Encontrados (${currentTask.matricula})`
               } - {currentTask.nome || ''}
             </h2>
 
             {isHoleriteMode && (
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                  <label htmlFor="filterMonth" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Mês/Ano (Ex: 01/2024)</label>
-                  <input 
-                    id="filterMonth"
-                    type="text" 
-                    value={filterMonth} 
-                    onChange={(e) => setFilterMonth(e.target.value)} 
-                    placeholder="Filtrar por Mês" 
-                    style={{ padding: '0.5rem', borderRadius: '8px', border: 'none', background: 'var(--bg-glass)', color: 'var(--text-primary)' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                  <label htmlFor="filterType" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Tipo</label>
-                  <select 
-                    id="filterType"
-                    value={filterType} 
-                    onChange={(e) => setFilterType(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: '8px', border: 'none', background: 'var(--bg-glass)', color: 'var(--text-primary)', outline: 'none' }}
-                  >
-                    <option value="TODOS">Todos</option>
-                    <option value="NORMAL">Holerite Normal</option>
-                    <option value="DECIMO">13º Salário</option>
-                  </select>
-                </div>
-              </div>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                Os relatórios consolidados contêm todo o histórico do colaborador.
+              </p>
             )}
 
             <div className={styles.cardsGrid}>
-              {reports.filter(report => {
-                if (!isHoleriteMode) return true;
-                // Aplica filtro de Mês
-                if (filterMonth && report.monthString && !report.monthString.includes(filterMonth)) {
-                  return false;
-                }
-                // Aplica filtro de Tipo
-                if (filterType === 'NORMAL' && report.isDecimoTerceiro) return false;
-                if (filterType === 'DECIMO' && !report.isDecimoTerceiro) return false;
-                return true;
-              }).map((report, idx) => (
+              {reports.map((report, idx) => (
                 <div key={idx} className={styles.reportCard}>
                   <h3>{report.title}</h3>
                   <Button variant="secondary" onClick={() => handleVerify(report.url)}>
