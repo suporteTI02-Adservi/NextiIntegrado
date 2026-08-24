@@ -29,7 +29,7 @@ pub mod commands {
             .post("https://api.nexti.com/security/oauth/token")
             .header(
                 "Authorization",
-                "Basic YWRzZXJ2aToxY2E1YmRmNTZlYjY4YjNjZjk2Yjc5ZmUxNjdmMTlkMTJkMmExNWZm",
+                "Basic <token>",
             )
             .form(&params)
             .send()
