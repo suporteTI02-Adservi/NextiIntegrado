@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "nextiintegrado",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "identifier": "com.nexti.integrado",
   "plugins": {
     "updater": {
@@ -20,7 +20,7 @@
   "app": {
     "windows": [
       {
-        "title": "Integração Nexti v1.0.0",
+        "title": "Integração Nexti v2.6",
         "width": 800,
         "height": 600
       }
