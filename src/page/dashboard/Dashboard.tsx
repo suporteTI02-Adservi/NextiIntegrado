@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExtraction, Task } from '../../context/ExtractionContext';
 import { Button } from '../../components/Button/Button';
-import { FaTrash, FaEye, FaSync, FaFilePdf, FaUsers, FaMoneyBillWave } from 'react-icons/fa';
+import { TaskCard } from '../../components/TaskCard/TaskCard';
+import { FaSync } from 'react-icons/fa';
 import styles from './Dashboard.module.css';
 
 export const Dashboard = () => {
@@ -30,24 +31,6 @@ export const Dashboard = () => {
 
   const handleRefresh = async () => {
     await loadTasks();
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'Processando...';
-      case 'SUCCESS': return 'Concluído';
-      case 'ERROR': return 'Erro';
-      default: return status;
-    }
-  };
-
-  const getStatusClass = (status: string) => {
-    switch (status) {
-      case 'PENDING': return styles.statusPending;
-      case 'SUCCESS': return styles.statusSuccess;
-      case 'ERROR': return styles.statusError;
-      default: return '';
-    }
   };
 
   const handleNavigateTask = (task: Task) => {
@@ -137,89 +120,14 @@ export const Dashboard = () => {
         </div>
       ) : (
         <div className={styles.grid}>
-          {filteredTasks.map((task) => {
-            let displayDate = "";
-            if (task.updated_at) {
-              const ms = typeof task.updated_at === 'number' && task.updated_at < 1e11 ? task.updated_at * 1000 : task.updated_at;
-              displayDate = new Date(ms).toLocaleString();
-            }
-
-            return (
-              <div key={task.id} className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.typeBadge}>
-                    {task.task_type === 'documento' ? (
-                      <span className={styles.badgeDoc}><FaFilePdf /> Documentos</span>
-                    ) : task.task_type === 'holerite' ? (
-                      <span className={styles.badgeHolerite}><FaMoneyBillWave /> Holerite</span>
-                    ) : (
-                      <span className={styles.badgeConv}><FaUsers /> Convocações</span>
-                    )}
-                  </div>
-                  <span className={`${styles.status} ${getStatusClass(task.status)}`}>
-                    {getStatusLabel(task.status)}
-                  </span>
-                </div>
-                
-                <div className={styles.cardBody}>
-                  <div className={styles.matricula}>Matrícula: {task.matricula}</div>
-                  <div className={styles.nome}>
-                    Colaborador: {task.nome ? task.nome : <span style={{ opacity: 0.5 }}>{task.status === 'PENDING' ? 'Consultando...' : 'Não identificado'}</span>}
-                  </div>
-                  {displayDate && <div className={styles.dateInfo}>Data: {displayDate}</div>}
-                  
-                  {task.status === 'PENDING' && (
-                    <div className={styles.stepInfo}>
-                      <strong>Etapa:</strong> {task.step}
-                    </div>
-                  )}
-
-                  {task.status === 'ERROR' && task.error_msg && (
-                    <div className={styles.errorMsg}>
-                      {task.error_msg}
-                    </div>
-                  )}
-                </div>
-
-                <div className={styles.cardActions}>
-                  {task.status === 'SUCCESS' && (
-                    <Button 
-                      variant="primary" 
-                      onClick={() => handleNavigateTask(task)}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                    >
-                      <FaEye /> Visualizar
-                    </Button>
-                  )}
-                  
-                  {task.status === 'ERROR' && (
-                    <Button 
-                      variant="secondary" 
-                      onClick={() => handleNavigateTask(task)}
-                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                    >
-                      Tentar Novamente
-                    </Button>
-                  )}
-
-                  {task.status === 'PENDING' && (
-                    <div style={{ flex: 1, textAlign: 'center', padding: '0.5rem' }}>
-                      <div className={styles.pulseBar}></div>
-                    </div>
-                  )}
-
-                  <Button 
-                    variant="icon" 
-                    onClick={() => deleteTask(task.id)}
-                    title="Excluir Registro"
-                    style={{ color: '#e74c3c' }}
-                  >
-                    <FaTrash />
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+          {filteredTasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onNavigate={handleNavigateTask}
+              onDelete={deleteTask}
+            />
+          ))}
         </div>
       )}
     </div>

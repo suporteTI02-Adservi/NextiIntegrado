@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "../../components/Button/Button";
+import { ReportCard } from "../../components/ReportCard/ReportCard";
 import { useToast } from "../../context/ToastContext";
 import { useExtraction, ReportData } from "../../context/ExtractionContext";
 import styles from "./documentos.module.css";
@@ -167,6 +168,8 @@ const Documentos: React.FC = () => {
               fileName = `${matriculaAtual} - Comprovante Bancario.pdf`;
             } else if (report.type === "CTPS_DIGITAL") {
               fileName = `${matriculaAtual} - CTPS Digital.pdf`;
+            } else if (report.type === "COMPROVANTE_RESCISAO") {
+              fileName = `${matriculaAtual} - Comprovante de Rescisao.pdf`;
             } else {
               fileName = `${matriculaAtual} - ${report.title}.pdf`;
             }
@@ -319,12 +322,11 @@ const Documentos: React.FC = () => {
 
             <div className={styles.cardsGrid}>
               {reports.map((report, idx) => (
-                <div key={idx} className={styles.reportCard}>
-                  <h3>{report.title}</h3>
-                  <Button variant="secondary" onClick={() => handleVerify(report.url)}>
-                    Visualizar
-                  </Button>
-                </div>
+                <ReportCard
+                  key={idx}
+                  report={report}
+                  onVerify={handleVerify}
+                />
               ))}
             </div>
 

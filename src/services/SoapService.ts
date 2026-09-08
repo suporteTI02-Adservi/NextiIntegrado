@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export type ReportType = "AFASTAMENTOS" | "CTPS" | "HOLERITE" | "COMPROVANTE_BANCARIO" | "CTPS_DIGITAL";
+export type ReportType = "AFASTAMENTOS" | "CTPS" | "HOLERITE" | "COMPROVANTE_BANCARIO" | "CTPS_DIGITAL" | "COMPROVANTE_RESCISAO";
 
 export class SoapService {
   /**
@@ -41,6 +41,9 @@ export class SoapService {
       
       prRelatorio = "FPDO504.COL";
       prEntradaInner = `<EDatRef=${todayStr}><EAbrEmp=${empresa}><EAbrCad=${matricula}><EGerArq=N>`;
+    } else if (type === "COMPROVANTE_RESCISAO") {
+      prRelatorio = "FPAR536.CRE";
+      prEntradaInner = `<EDatIni=01/01/2000><EDatFim=31/12/2050><ETipArq=RE><ENumEmp=${empresa}><ENumCad=${matricula}><EGerArq=N>`;
     }
 
     // Usa CDATA para não precisar escapar os caracteres < e >

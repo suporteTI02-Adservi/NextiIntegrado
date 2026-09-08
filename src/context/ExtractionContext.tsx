@@ -74,15 +74,29 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const noticeService = new NoticeService();
 
   useEffect(() => {
-    // Carregar credenciais do localStorage ao iniciar
-    const savedCreds = localStorage.getItem('rubiCredentials');
-    if (savedCreds) {
+    const initCredentials = async () => {
       try {
-        setUserCredentialsState(JSON.parse(savedCreds));
+        const defaultCreds = await invoke<{ usuario: string; senha: string }>("get_senior_credentials");
+        if (defaultCreds && defaultCreds.usuario && defaultCreds.senha) {
+          setUserCredentialsState(defaultCreds);
+          localStorage.setItem('rubiCredentials', JSON.stringify(defaultCreds));
+          return;
+        }
       } catch (e) {
-        console.error("Erro ao carregar credenciais");
+        console.warn("Não foi possível carregar credenciais do Rust backend:", e);
       }
-    }
+
+      const savedCreds = localStorage.getItem('rubiCredentials');
+      if (savedCreds) {
+        try {
+          setUserCredentialsState(JSON.parse(savedCreds));
+        } catch (e) {
+          console.error("Erro ao carregar credenciais do localStorage");
+        }
+      }
+    };
+
+    initCredentials();
     loadTasks();
   }, []);
 
@@ -179,6 +193,12 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         blobCTPSDigital = await soapService.getReport("CTPS_DIGITAL", userCredentials.usuario, userCredentials.senha, matricula);
       } catch (e) { console.warn("Erro CTPS Digital:", e); }
 
+      let blobRescisao: Blob | null = null;
+      try {
+        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando Comprovante de Rescisão...');
+        blobRescisao = await soapService.getReport("COMPROVANTE_RESCISAO", userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) { console.warn("Erro Comprovante de Rescisão:", e); }
+
       await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Salvando relatórios localmente...');
 
       // Converter blobs para base64 para persistir no SQLite
@@ -186,12 +206,14 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const base64CTPS = blobCTPS ? await blobToBase64(blobCTPS) : null;
       const base64Comprovante = blobComprovante ? await blobToBase64(blobComprovante) : null;
       const base64CTPSDigital = blobCTPSDigital ? await blobToBase64(blobCTPSDigital) : null;
+      const base64Rescisao = blobRescisao ? await blobToBase64(blobRescisao) : null;
 
       // Salvar PDFs em disco usando o novo comando Rust (otimização)
       let pathAfastamentos: string | null = null;
       let pathCTPS: string | null = null;
       let pathComprovante: string | null = null;
       let pathCTPSDigital: string | null = null;
+      let pathRescisao: string | null = null;
       try {
         if (base64Afastamentos) {
           pathAfastamentos = await invoke<string>("save_pdf_file", {
@@ -218,6 +240,13 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           pathCTPSDigital = await invoke<string>("save_pdf_file", {
             base64Data: base64CTPSDigital,
             fileName: `${matricula}_CTPS_Digital.pdf`,
+            subFolder: matricula,
+          });
+        }
+        if (base64Rescisao) {
+          pathRescisao = await invoke<string>("save_pdf_file", {
+            base64Data: base64Rescisao,
+            fileName: `${matricula}_Comprovante_Rescisao.pdf`,
             subFolder: matricula,
           });
         }
@@ -282,6 +311,20 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           title: "CTPS Digital",
           blob: blobCTPSDigital,
           url: URL.createObjectURL(blobCTPSDigital!)
+        });
+      }
+
+      if (base64Rescisao) {
+        resultsPayload.push({
+          type: "COMPROVANTE_RESCISAO",
+          title: "Comprovante de Rescisão",
+          ...(pathRescisao ? { filePath: pathRescisao } : { base64: base64Rescisao })
+        });
+        reports.push({
+          type: "COMPROVANTE_RESCISAO",
+          title: "Comprovante de Rescisão",
+          blob: blobRescisao,
+          url: URL.createObjectURL(blobRescisao!)
         });
       }
 

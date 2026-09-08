@@ -1,0 +1,44 @@
+name: Release Automated Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish-tauri:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build Tauri Application & Release
+        uses: tauri-apps/tauri-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          SENIOR_USER: ${{ secrets.SENIOR_USER }}
+          SENIOR_PASS: ${{ secrets.SENIOR_PASS }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        with:
+          tagName: v__VERSION__ # tauri-action substitui automaticamente pela versão do tauri.conf.json
+          releaseName: 'Nexti Integrado v__VERSION__'
+          releaseBody: 'Nova versão lançada automaticamente pelo GitHub Actions.'
+          releaseDraft: false
+          prerelease: false
+          args: --target x86_64-pc-windows-msvc

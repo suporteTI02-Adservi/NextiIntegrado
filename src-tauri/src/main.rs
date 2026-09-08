@@ -17,6 +17,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_token,
+            commands::get_senior_credentials,
             commands::get_colaborador,
             commands::get_documents,
             commands::download_docs,

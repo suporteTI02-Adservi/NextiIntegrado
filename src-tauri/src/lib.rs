@@ -50,6 +50,20 @@ pub mod commands {
     }
 
     #[tauri::command]
+    pub async fn get_senior_credentials() -> Result<Value, String> {
+        let user = option_env!("SENIOR_USER")
+            .unwrap_or("alexsandro")
+            .to_string();
+        let pass = option_env!("SENIOR_PASS")
+            .unwrap_or("ale123456")
+            .to_string();
+        Ok(serde_json::json!({
+            "usuario": user,
+            "senha": pass
+        }))
+    }
+
+    #[tauri::command]
     pub async fn get_colaborador(external_id: i64) -> Result<Value, String> {
         let client = reqwest::Client::new();
         let empresa = external_id.to_string().chars().next().unwrap();
