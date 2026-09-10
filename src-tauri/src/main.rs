@@ -4,6 +4,7 @@ use nextiintegrado_lib::commands;
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_fs::init()) // Adicione isto
@@ -28,7 +29,8 @@ fn main() {
             commands::get_task_results_db,
             commands::delete_task_db,
             commands::save_pdf_file,
-            commands::read_pdf_file
+            commands::read_pdf_file,
+            commands::generate_ia_response
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

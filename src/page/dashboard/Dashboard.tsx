@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Outlet } from 'react-router-dom';
 import { useExtraction, Task } from '../../context/ExtractionContext';
-import { Button } from '../../components/Button/Button';
 import { TaskCard } from '../../components/TaskCard/TaskCard';
-import { FaSync } from 'react-icons/fa';
+import { FaBars } from 'react-icons/fa';
 import styles from './Dashboard.module.css';
 
 export const Dashboard = () => {
@@ -13,6 +12,7 @@ export const Dashboard = () => {
   const [filterName, setFilterName] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [filterDate, setFilterDate] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     loadTasks();
@@ -29,17 +29,15 @@ export const Dashboard = () => {
     }
   }, [tasks, loadTasks]);
 
-  const handleRefresh = async () => {
-    await loadTasks();
-  };
-
   const handleNavigateTask = (task: Task) => {
     if (task.task_type === 'convocacao') {
       navigate(`/nexti?matricula=${task.matricula}`);
     } else if (task.task_type === 'holerite') {
       navigate(`/documentos?aviso=${task.matricula}&tipo=holerite`);
+    } else if (task.task_type === 'juridico') {
+      navigate(`/documentos?aviso=${task.matricula}&tipo=juridico`);
     } else {
-      navigate(`/documentos?aviso=${task.matricula}`);
+      navigate(`/documentos?aviso=${task.matricula}&tipo=homologacao`);
     }
   };
 
@@ -74,44 +72,54 @@ export const Dashboard = () => {
 
   return (
     <div className={styles.dashboard}>
+      <Outlet />
+      
       <div className={styles.header}>
         <div className={styles.welcome}>
-          <h2>Menu Principal</h2>
-          <p>Acompanhe o status e histórico de processos (Convocações e Documentos).</p>
+          <div className={styles.welcomeRow}>
+            <button 
+              onClick={() => setShowFilters(!showFilters)} 
+              className={`${styles.hamburgerBtn} ${showFilters ? styles.hamburgerBtnActive : ''}`}
+              title="Filtros"
+            >
+              <FaBars />
+            </button>
+            <h2>Menu Principal</h2>
+            
+            <input 
+              type="text" 
+              className={styles.searchInput}
+              placeholder="Pesquisar documentos..." 
+              value={filterName} 
+              onChange={e => setFilterName(e.target.value)} 
+            />
+          </div>
+          <p>Acompanhe o status e histórico de processos (Convocações, Homologações, Jurídico e Holerites).</p>
         </div>
-        <Button variant="secondary" onClick={handleRefresh} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <FaSync /> Atualizar
-        </Button>
       </div>
 
-      <div className={styles.filters}>
-        <div className={styles.filterGroup}>
-          <label>Buscar (Nome ou Matrícula)</label>
-          <input 
-            type="text" 
-            placeholder="Digite para buscar..." 
-            value={filterName} 
-            onChange={e => setFilterName(e.target.value)} 
-          />
+      {showFilters && (
+        <div className={styles.filters}>
+          <div className={styles.filterGroup}>
+            <label>Tipo de Processo</label>
+            <select value={filterType} onChange={e => setFilterType(e.target.value)}>
+              <option value="all">Todos os tipos</option>
+              <option value="convocacao">Convocações</option>
+              <option value="documento">Homologação</option>
+              <option value="juridico">Jurídico</option>
+              <option value="holerite">Holerites</option>
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label>Data de Criação</label>
+            <input 
+              type="date" 
+              value={filterDate} 
+              onChange={e => setFilterDate(e.target.value)} 
+            />
+          </div>
         </div>
-        <div className={styles.filterGroup}>
-          <label>Tipo de Processo</label>
-          <select value={filterType} onChange={e => setFilterType(e.target.value)}>
-            <option value="all">Todos os tipos</option>
-            <option value="convocacao">Convocações</option>
-            <option value="documento">Documentos</option>
-            <option value="holerite">Holerites</option>
-          </select>
-        </div>
-        <div className={styles.filterGroup}>
-          <label>Data de Criação</label>
-          <input 
-            type="date" 
-            value={filterDate} 
-            onChange={e => setFilterDate(e.target.value)} 
-          />
-        </div>
-      </div>
+      )}
 
       {filteredTasks.length === 0 ? (
         <div className={styles.emptyState}>

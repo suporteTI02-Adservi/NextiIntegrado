@@ -204,6 +204,9 @@
 }
 
 .backBtn {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -214,9 +217,9 @@
   font-weight: 500;
   cursor: pointer;
   padding: 0.5rem 1rem;
-  margin-bottom: 1rem;
   border-radius: 8px;
   transition: all 0.2s ease;
+  z-index: 50;
 }
 
 .backBtn:hover {

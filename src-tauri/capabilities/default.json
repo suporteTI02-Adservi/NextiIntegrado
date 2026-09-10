@@ -16,6 +16,12 @@
     "dialog:allow-save",
     "stronghold:default",
     "updater:default",
-    "process:default"
+    "process:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://api.incubebots.com/*" }
+      ]
+    }
   ]
 }

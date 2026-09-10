@@ -11,10 +11,58 @@
   align-items: center;
 }
 
-.welcome h2 {
+.welcome {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.welcomeRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.welcomeRow h2 {
   font-size: 2rem;
   color: var(--text-main);
-  margin-bottom: 0.5rem;
+  margin: 0;
+}
+
+.hamburgerBtn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.4rem;
+  color: var(--header-text);
+  transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.hamburgerBtnActive {
+  transform: rotate(90deg);
+}
+
+.searchInput {
+  padding: 0.6rem 1rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-solid);
+  background: var(--bg-glass);
+  color: var(--text-main);
+  outline: none;
+  min-width: 300px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+  margin-left: auto; /* Joga a barra pro canto direito se houver espaço */
+}
+
+.searchInput:focus {
+  border-color: var(--secondary-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .welcome p {

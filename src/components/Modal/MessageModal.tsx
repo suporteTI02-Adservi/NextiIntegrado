@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Button } from '../Button/Button';
+import { getBadge } from '../ReportCard/ReportCard';
 import styles from './MessageModal.module.css';
 
 interface MessageModalProps {
@@ -29,11 +30,29 @@ export const MessageModal: React.FC<MessageModalProps> = ({
 
   if (!isOpen) return null;
 
+  const badge = getBadge(documentTitle || '');
+
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.modalHeader}>
-          <h3>{documentTitle}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+            <h3>{documentTitle}</h3>
+            {badge && (
+              <span style={{
+                background: `${badge.color}20`,
+                color: badge.color,
+                padding: '4px 10px',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: 'bold',
+                border: `1px solid ${badge.color}40`,
+                whiteSpace: 'nowrap'
+              }}>
+                {badge.label}
+              </span>
+            )}
+          </div>
           <button className={styles.closeBtn} onClick={onClose}>&times;</button>
         </div>
         

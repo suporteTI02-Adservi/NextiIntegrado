@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { FaArrowLeft, FaArrowRight, FaCloudDownloadAlt, FaBars, FaChevronLeft, FaUsers } from "react-icons/fa";
+import { FaBars, FaChevronLeft, FaUsers } from "react-icons/fa";
 
 import styles from "./mainPage.module.css";
 import { GetNotices } from "../../services/GetNotices";
-import { NoticeCard } from "../../components/NoticeCard/NoticeCard";
 import { Button } from "../../components/Button/Button";
 import { useToast } from "../../context/ToastContext";
 import { MessageModal } from "../../components/Modal/MessageModal";
-import { useSearchParams } from "react-router-dom";
+import { PageModal } from "../../components/Modal/PageModal";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useExtraction } from "../../context/ExtractionContext";
+import { ItemListModal } from "../../components/ListModal/ItemListModal";
 
 const MainPage: React.FC = () => {
   const [matricula, setMatricula] = useState<string>("");
   const [downloadLoad, setDownloadLoad] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const { showToast } = useToast();
@@ -81,7 +82,6 @@ const MainPage: React.FC = () => {
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
-      setCurrentPage(0);
     }
 
     if (!matricula) return;
@@ -127,9 +127,13 @@ const MainPage: React.FC = () => {
     }
   };
 
-  const handleDownloadAll = async () => {
+  const handleDownloadAll = async (targetDocs?: any[]) => {
     setDownloadLoad(true);
-    const noticeIDs = docs.map((doc: any) => ({
+    const docsToUse = targetDocs && targetDocs.length > 0
+      ? targetDocs.map(item => item.rawItem || item)
+      : docs;
+
+    const noticeIDs = docsToUse.map((doc: any) => ({
       id: doc.id,
       name: doc.name,
     }));
@@ -163,175 +167,136 @@ const MainPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  // Paginação local/offline
-  const itemsPerPage = 8;
-  const totalPages = Math.ceil(docs.length / itemsPerPage);
-  const paginatedDocs = docs.slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage);
-  const hasNextPage = currentPage < totalPages - 1;
-
   return (
-    <div className={styles.layoutContainer}>
-      <button 
-        className={styles.toggleBtn} 
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        title={isSidebarOpen ? "Recolher Painel" : "Expandir Painel"}
-      >
-        {isSidebarOpen ? <FaChevronLeft /> : <FaBars />}
-      </button>
+    <PageModal>
+      <div className={styles.layoutContainer}>
+        <button 
+          className={styles.toggleBtn} 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          title={isSidebarOpen ? "Recolher Painel" : "Expandir Painel"}
+        >
+          {isSidebarOpen ? <FaChevronLeft /> : <FaBars />}
+        </button>
 
-      {/* Sidebar (Formulário) */}
-      <aside className={`${styles.sidebar} ${!isSidebarOpen ? styles.sidebarCollapsed : ''}`}>
-        <h2 style={{marginTop: '2rem'}}>Consultar</h2>
-        <form onSubmit={handleSearch} className={styles.form}>
-          <div className={styles.inputGroup}>
-            <label htmlFor="matricula">Matrícula</label>
-            <input
-              id="matricula"
-              type="text"
-              value={matricula}
-              onChange={handleMatriculaChange}
-              placeholder="Digite os 9 números"
-              required
-            />
-          </div>
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={currentTask?.status === 'PENDING'}
-            style={{ width: "100%" }}
-          >
-            {currentTask?.status === 'PENDING' ? "Buscando..." : "Pesquisar"}
-          </Button>
-        </form>
-      </aside>
-
-      {/* Main Content (Resultados) */}
-      <main className={styles.mainContent}>
-        {downloadLoad && (
-          <div className={styles.loadingCard} style={{ margin: '0 auto' }}>
-            <h2>Baixando documentos...</h2>
-            <p>Isso pode demorar alguns minutos dependendo da quantidade de documentos.</p>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: '50%', animation: 'pulse 1.5s infinite' }}></div>
+        {/* Sidebar (Formulário) */}
+        <aside className={`${styles.sidebar} ${!isSidebarOpen ? styles.sidebarCollapsed : ''}`}>
+          <h2 style={{marginTop: '2rem'}}>Consultar</h2>
+          <form onSubmit={handleSearch} className={styles.form}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="matricula">Matrícula</label>
+              <input
+                id="matricula"
+                type="text"
+                value={matricula}
+                onChange={handleMatriculaChange}
+                placeholder="Digite os 9 números"
+                required
+              />
             </div>
-            <style>
-              {`@keyframes pulse { 0% { width: 10%; } 50% { width: 90%; } 100% { width: 10%; } }`}
-            </style>
-          </div>
-        )}
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={currentTask?.status === 'PENDING'}
+              style={{ width: "100%" }}
+            >
+              {currentTask?.status === 'PENDING' ? "Buscando..." : "Pesquisar"}
+            </Button>
+          </form>
+        </aside>
 
-        {!downloadLoad && (
-          <>
-            {/* Estado inicial / Nenhuma busca feita */}
-            {!currentTask && (
-              <div style={{ textAlign: 'center', marginTop: '10%' }}>
-                <FaUsers size={64} color="var(--text-secondary)" opacity={0.5} />
-                <h2 style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Nenhuma convocação carregada</h2>
-                <p>Pesquise pela matrícula no painel lateral para carregar os dados.</p>
+        {/* Main Content (Resultados) */}
+        <main className={styles.mainContent}>
+          {downloadLoad && (
+            <div className={styles.loadingCard} style={{ margin: '0 auto' }}>
+              <h2>Baixando documentos...</h2>
+              <p>Isso pode demorar alguns minutos dependendo da quantidade de documentos.</p>
+              <div className={styles.progressBar}>
+                <div className={styles.progressFill} style={{ width: '50%', animation: 'pulse 1.5s infinite' }}></div>
               </div>
-            )}
+              <style>
+                {`@keyframes pulse { 0% { width: 10%; } 50% { width: 90%; } 100% { width: 10%; } }`}
+              </style>
+            </div>
+          )}
 
-            {/* Estado Pendente (Processando em Background) */}
-            {currentTask && currentTask.status === 'PENDING' && (
-              <div className={styles.loadingCard} style={{ margin: '0 auto' }}>
-                <h2>Processando Consulta...</h2>
-                <p>A consulta está sendo processada em segundo plano. Você pode navegar para outras abas.</p>
-                <div style={{ margin: '1rem 0', fontWeight: 'bold' }}>
-                  Etapa: {currentTask.step}
+          {!downloadLoad && (
+            <>
+              {/* Estado inicial / Nenhuma busca feita */}
+              {!currentTask && (
+                <div style={{ textAlign: 'center', marginTop: '10%' }}>
+                  <FaUsers size={64} color="var(--text-secondary)" opacity={0.5} />
+                  <h2 style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Nenhuma convocação carregada</h2>
+                  <p>Pesquise pela matrícula no painel lateral para carregar os dados.</p>
                 </div>
-                <div className={styles.progressBar}>
-                  <div className={styles.progressFill} style={{ width: '50%', animation: 'pulse 1.5s infinite' }}></div>
-                </div>
-                <style>
-                  {`@keyframes pulse { 0% { width: 10%; } 50% { width: 90%; } 100% { width: 10%; } }`}
-                </style>
-              </div>
-            )}
+              )}
 
-            {/* Estado Erro */}
-            {currentTask && currentTask.status === 'ERROR' && (
-              <div className={styles.error} style={{ margin: '0 auto', maxWidth: '600px', padding: '2rem', background: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', borderRadius: '12px' }}>
-                <h2 style={{ color: '#e74c3c' }}>Falha na Consulta</h2>
-                <p>{currentTask.error_msg || "Ocorreu um erro técnico ao consultar o Nexti."}</p>
-              </div>
-            )}
-
-            {/* Estado Concluído com Sucesso */}
-            {currentTask && currentTask.status === 'SUCCESS' && docs.length === 0 && (
-              <div style={{ textAlign: 'center', marginTop: '10%' }}>
-                <FaUsers size={64} color="var(--text-secondary)" opacity={0.5} />
-                <h2 style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Nenhuma convocação encontrada</h2>
-                <p>Este colaborador não possui convocações registradas no momento.</p>
-              </div>
-            )}
-
-            {currentTask && currentTask.status === 'SUCCESS' && docs.length > 0 && (
-              <section className={styles.resultsArea}>
-                <h2>Convocações do Colaborador ({currentTask.nome || currentTask.matricula}) - {docs.length} no total</h2>
-
-                <div className={styles.cardsGrid}>
-                  <div className={styles.downloadAllWrapper}>
-                    <Button
-                      variant="primary"
-                      onClick={handleDownloadAll}
-                      style={{ gap: "0.5rem" }}
-                    >
-                      <FaCloudDownloadAlt /> Baixar Todos ({docs.length})
-                    </Button>
+              {/* Estado Pendente (Processando em Background) */}
+              {currentTask && currentTask.status === 'PENDING' && (
+                <div className={styles.loadingCard} style={{ margin: '0 auto' }}>
+                  <h2>Processando Consulta...</h2>
+                  <p>A consulta está sendo processada em segundo plano. Você pode navegar para outras abas.</p>
+                  <div style={{ margin: '1rem 0', fontWeight: 'bold' }}>
+                    Etapa: {currentTask.step}
                   </div>
-
-                  {paginatedDocs.map((doc: any, idx: any) => (
-                    <NoticeCard
-                      key={idx}
-                      personName={doc.personName}
-                      id={doc.id}
-                      name={doc.name}
-                      text={doc.text}
-                      onDownload={handleDownload}
-                      onReadMore={openFullMessage}
-                      cleanHtml={cleanHtml}
-                    />
-                  ))}
-                </div>
-
-                {totalPages > 1 && (
-                  <div className={styles.paginationContainer}>
-                    <Button
-                      variant="icon"
-                      onClick={() =>
-                        setCurrentPage((prev) => Math.max(prev - 1, 0))
-                      }
-                      disabled={currentPage === 0}
-                    >
-                      <FaArrowLeft />
-                    </Button>
-
-                    <span>
-                      Página {currentPage + 1} de {totalPages} {currentPage === totalPages - 1 && "(última página)"}
-                    </span>
-
-                    <Button
-                      variant="icon"
-                      disabled={!hasNextPage}
-                      onClick={() => setCurrentPage((prev) => prev + 1)}
-                    >
-                      <FaArrowRight />
-                    </Button>
+                  <div className={styles.progressBar}>
+                    <div className={styles.progressFill} style={{ width: '50%', animation: 'pulse 1.5s infinite' }}></div>
                   </div>
-                )}
-              </section>
-            )}
-          </>
-        )}
-      </main>
+                  <style>
+                    {`@keyframes pulse { 0% { width: 10%; } 50% { width: 90%; } 100% { width: 10%; } }`}
+                  </style>
+                </div>
+              )}
 
-      <MessageModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        documentTitle={modalTitle}
-        documentHtml={modalHtml}
-      />
-    </div>
+              {/* Estado Erro */}
+              {currentTask && currentTask.status === 'ERROR' && (
+                <div className={styles.error} style={{ margin: '0 auto', maxWidth: '600px', padding: '2rem', background: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', borderRadius: '12px' }}>
+                  <h2 style={{ color: '#e74c3c' }}>Falha na Consulta</h2>
+                  <p>{currentTask.error_msg || "Ocorreu um erro técnico ao consultar o Nexti."}</p>
+                </div>
+              )}
+
+              {/* Estado Concluído com Sucesso */}
+              {currentTask && currentTask.status === 'SUCCESS' && docs.length === 0 && (
+                <div style={{ textAlign: 'center', marginTop: '10%' }}>
+                  <FaUsers size={64} color="var(--text-secondary)" opacity={0.5} />
+                  <h2 style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>Nenhuma convocação encontrada</h2>
+                  <p>Este colaborador não possui convocações registradas no momento.</p>
+                </div>
+              )}
+
+              {currentTask && currentTask.status === 'SUCCESS' && docs.length > 0 && (
+                <ItemListModal
+                  title="Convocações Encontradas"
+                  collaboratorName={currentTask.nome || currentTask.matricula}
+                  itemNoun="as convocações"
+                  searchPlaceholder="Pesquisar convocação..."
+                  items={docs.map((doc: any) => ({
+                    id: doc.id,
+                    title: doc.name || 'Convocação',
+                    subtitle: doc.type || 'Convocação de Cartão',
+                    previewText: doc.text,
+                    type: doc.name,
+                    rawItem: doc
+                  }))}
+                  onDownloadAll={(filteredItems) => handleDownloadAll(filteredItems)}
+                  isDownloadingAll={downloadLoad}
+                  onPrimaryAction={(item) => openFullMessage(item.title, item.rawItem.text)}
+                  onSecondaryAction={(item) => handleDownload(item.rawItem.id, item.rawItem.name)}
+                  cleanHtml={cleanHtml}
+                />
+              )}
+            </>
+          )}
+        </main>
+
+        <MessageModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          documentTitle={modalTitle}
+          documentHtml={modalHtml}
+        />
+      </div>
+    </PageModal>
   );
 };
 

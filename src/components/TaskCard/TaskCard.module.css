@@ -1,0 +1,233 @@
+.card {
+  background-color: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--border-radius);
+  padding: 16px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+  min-height: 140px;
+  overflow: hidden;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+  background-color: var(--bg-main);
+}
+
+.watermarkIcon {
+  position: absolute;
+  right: -20px;
+  bottom: -20px;
+  font-size: 140px;
+  opacity: 0.04;
+  color: var(--text-main);
+  pointer-events: none;
+  z-index: 0;
+  transform: rotate(-15deg);
+}
+
+.cardContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topRightActions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.deleteBtn {
+  background: var(--error-text);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  transition: opacity 0.2s, transform 0.2s;
+  opacity: 0.8;
+}
+
+.deleteBtn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  font-size: 18px;
+  /* Soft inner shadow for the badge to look "pressed in" */
+  box-shadow: inset 3px 3px 6px var(--neo-shadow-dark),
+              inset -3px -3px 6px var(--neo-shadow-light);
+}
+
+.docIcon {
+  color: #3498db;
+}
+
+.holeriteIcon {
+  color: #2ecc71;
+}
+
+.convIcon {
+  color: #9b59b6;
+}
+
+.juridicoIcon {
+  color: #e67e22;
+}
+
+
+
+.topCornerLight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  transition: opacity 0.4s ease;
+}
+
+.statusSuccess {
+  border-color: rgba(74, 222, 128, 0.30) rgba(255, 255, 255, 0.10) rgba(255, 255, 255, 0.06) rgba(74, 222, 128, 0.30);
+}
+
+.statusSuccess .topCornerLight {
+  background: radial-gradient(
+    circle at 0% 0%,
+    rgba(74, 222, 128, 0.40) 0%,
+    rgba(34, 197, 94, 0.16) 24%,
+    rgba(34, 197, 94, 0.03) 48%,
+    transparent 72%
+  );
+}
+
+.statusPending {
+  border-color: rgba(56, 189, 248, 0.32) rgba(255, 255, 255, 0.10) rgba(255, 255, 255, 0.06) rgba(56, 189, 248, 0.32);
+}
+
+.statusPending .topCornerLight {
+  background: radial-gradient(
+    circle at 0% 0%,
+    rgba(56, 189, 248, 0.42) 0%,
+    rgba(14, 165, 233, 0.18) 24%,
+    rgba(14, 165, 233, 0.03) 48%,
+    transparent 72%
+  );
+  animation: cardBreathe 3.5s ease-in-out infinite;
+}
+
+.statusError {
+  border-color: rgba(248, 113, 113, 0.32) rgba(255, 255, 255, 0.10) rgba(255, 255, 255, 0.06) rgba(248, 113, 113, 0.32);
+}
+
+.statusError .topCornerLight {
+  background: radial-gradient(
+    circle at 0% 0%,
+    rgba(248, 113, 113, 0.40) 0%,
+    rgba(239, 68, 68, 0.16) 24%,
+    rgba(239, 68, 68, 0.03) 48%,
+    transparent 72%
+  );
+}
+
+@keyframes cardBreathe {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.matricula {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.nome {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.dateInfo {
+  font-size: 0.75rem;
+  color: var(--text-placeholder);
+}
+
+.stepInfo {
+  font-size: 0.8rem;
+  color: #f39c12;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.cardActions {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.viewBtn {
+  background-color: var(--bg-main);
+  color: var(--header-text);
+  border: none;
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  /* Neomorfismo no botão */
+  box-shadow: 4px 4px 8px var(--neo-shadow-dark),
+             -4px -4px 8px var(--neo-shadow-light);
+  transition: all 0.2s;
+}
+
+.viewBtn:hover {
+  box-shadow: inset 4px 4px 8px var(--neo-shadow-dark),
+              inset -4px -4px 8px var(--neo-shadow-light);
+  color: var(--text-main);
+}
+
+.errorMsg {
+  font-size: 0.8rem;
+  color: var(--error-text);
+  margin-top: 4px;
+  line-height: 1.2;
+}

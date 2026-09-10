@@ -10,25 +10,27 @@
   border: 1px solid var(--border-glass);
   border-radius: var(--border-radius);
   padding: 1.5rem;
-  box-shadow: 
-    10px 10px 20px var(--shadow-dark),
-    -10px -10px 20px var(--shadow-light),
-    inset 0 0 0 1px var(--border-glass);
-  transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.4s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  transition: opacity 0.2s, transform 0.3s ease, box-shadow 0.3s ease, background 0.4s ease;
   height: 100%;
+  opacity: 0.7;
+  position: relative;
+  overflow: hidden;
 }
 
 .card:hover {
   transform: translateY(-5px);
-  box-shadow: 
-    15px 15px 25px var(--shadow-dark),
-    -15px -15px 25px var(--shadow-light);
+  opacity: 1;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
 .cardHeader {
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-glass); 
+  border-bottom: 1px solid var(--border-glass);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .personName {

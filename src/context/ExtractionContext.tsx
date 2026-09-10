@@ -12,11 +12,11 @@ export interface ReportData {
   monthString?: string;
 }
 
-export type TaskType = 'documento' | 'convocacao' | 'holerite';
+export type TaskType = 'documento' | 'convocacao' | 'holerite' | 'juridico';
 export type TaskStatus = 'PENDING' | 'SUCCESS' | 'ERROR';
 
 export interface Task {
-  id: string; // Ex: 'documento_123456', 'convocacao_123456' ou 'holerite_123456'
+  id: string; // Ex: 'documento_123456', 'convocacao_123456', 'holerite_123456' ou 'juridico_123456'
   task_type: TaskType;
   matricula: string;
   nome: string | null;
@@ -34,6 +34,7 @@ interface ExtractionContextData {
   tasks: Task[];
   loadTasks: () => Promise<void>;
   startDocumentoExtraction: (matricula: string) => Promise<void>;
+  startJuridicoExtraction: (matricula: string) => Promise<void>;
   startConvocacaoSearch: (matricula: string) => Promise<void>;
   startHoleriteExtraction: (matricula: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
@@ -154,7 +155,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const taskId = `documento_${matricula}`;
 
-    // 1. Iniciar tarefa no SQLite
+    // 1. Iniciar tarefa no SQLite (Homologação)
     await saveTask(taskId, 'documento', matricula, null, 'PENDING', 'Consultando colaborador no Senior...');
 
     try {
@@ -166,24 +167,11 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.warn("Não foi possível buscar o nome do colaborador:", e);
       }
 
-      await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando relatório de Afastamentos...');
+      await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando Comprovante Bancário...');
 
-      // 3. Buscar relatórios
-      let blobAfastamentos: Blob | null = null;
-      try {
-        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando relatório de Afastamentos...');
-        blobAfastamentos = await soapService.getReport("AFASTAMENTOS", userCredentials.usuario, userCredentials.senha, matricula);
-      } catch (e) { console.warn("Erro Afastamentos:", e); }
-
-      let blobCTPS: Blob | null = null;
-      try {
-        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando ficha CTPS...');
-        blobCTPS = await soapService.getReport("CTPS", userCredentials.usuario, userCredentials.senha, matricula);
-      } catch (e) { console.warn("Erro CTPS:", e); }
-
+      // 3. Buscar relatórios de Homologação (Comprovante Bancário, CTPS Digital, Rescisão)
       let blobComprovante: Blob | null = null;
       try {
-        await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Buscando Comprovante Bancário...');
         blobComprovante = await soapService.getReport("COMPROVANTE_BANCARIO", userCredentials.usuario, userCredentials.senha, matricula);
       } catch (e) { console.warn("Erro Comprovante:", e); }
 
@@ -201,34 +189,14 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       await saveTask(taskId, 'documento', matricula, nome, 'PENDING', 'Salvando relatórios localmente...');
 
-      // Converter blobs para base64 para persistir no SQLite
-      const base64Afastamentos = blobAfastamentos ? await blobToBase64(blobAfastamentos) : null;
-      const base64CTPS = blobCTPS ? await blobToBase64(blobCTPS) : null;
       const base64Comprovante = blobComprovante ? await blobToBase64(blobComprovante) : null;
       const base64CTPSDigital = blobCTPSDigital ? await blobToBase64(blobCTPSDigital) : null;
       const base64Rescisao = blobRescisao ? await blobToBase64(blobRescisao) : null;
 
-      // Salvar PDFs em disco usando o novo comando Rust (otimização)
-      let pathAfastamentos: string | null = null;
-      let pathCTPS: string | null = null;
       let pathComprovante: string | null = null;
       let pathCTPSDigital: string | null = null;
       let pathRescisao: string | null = null;
       try {
-        if (base64Afastamentos) {
-          pathAfastamentos = await invoke<string>("save_pdf_file", {
-            base64Data: base64Afastamentos,
-            fileName: `${matricula}_Afastamentos.pdf`,
-            subFolder: matricula,
-          });
-        }
-        if (base64CTPS) {
-          pathCTPS = await invoke<string>("save_pdf_file", {
-            base64Data: base64CTPS,
-            fileName: `${matricula}_CTPS.pdf`,
-            subFolder: matricula,
-          });
-        }
         if (base64Comprovante) {
           pathComprovante = await invoke<string>("save_pdf_file", {
             base64Data: base64Comprovante,
@@ -254,37 +222,8 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         console.warn("Não foi possível salvar PDFs em disco, usando base64 inline:", e);
       }
 
-      // Payload com caminhos de arquivo em vez de base64 gigante
       const resultsPayload: any[] = [];
       const reports: ReportData[] = [];
-
-      if (base64Afastamentos) {
-        resultsPayload.push({
-          type: "AFASTAMENTOS",
-          title: "Afastamentos do Colaborador",
-          ...(pathAfastamentos ? { filePath: pathAfastamentos } : { base64: base64Afastamentos })
-        });
-        reports.push({
-          type: "AFASTAMENTOS",
-          title: "Afastamentos do Colaborador",
-          blob: blobAfastamentos,
-          url: URL.createObjectURL(blobAfastamentos!)
-        });
-      }
-
-      if (base64CTPS) {
-        resultsPayload.push({
-          type: "CTPS",
-          title: "Ficha CTPS do Colaborador",
-          ...(pathCTPS ? { filePath: pathCTPS } : { base64: base64CTPS })
-        });
-        reports.push({
-          type: "CTPS",
-          title: "Ficha CTPS do Colaborador",
-          blob: blobCTPS,
-          url: URL.createObjectURL(blobCTPS!)
-        });
-      }
 
       if (base64Comprovante) {
         resultsPayload.push({
@@ -329,16 +268,114 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       if (resultsPayload.length === 0) {
-        throw new Error("Nenhum documento pôde ser encontrado para este colaborador.");
+        throw new Error("Nenhum documento de homologação pôde ser encontrado para este colaborador.");
       }
 
       setResultsCache(prev => ({ ...prev, [taskId]: reports }));
-
-      // Salvar como SUCCESS
       await saveTask(taskId, 'documento', matricula, nome, 'SUCCESS', 'Concluído', undefined, JSON.stringify(resultsPayload));
     } catch (err: any) {
       const errMsg = err.message || "Erro desconhecido";
-      await saveTask(taskId, 'documento', matricula, null, 'ERROR', 'Falha na extração', errMsg);
+      await saveTask(taskId, 'documento', matricula, null, 'ERROR', 'Falha na extração de homologação', errMsg);
+    }
+  };
+
+  const startJuridicoExtraction = async (matricula: string) => {
+    if (!userCredentials) {
+      throw new Error("Credenciais não configuradas. Por favor, insira o usuário e senha.");
+    }
+
+    const taskId = `juridico_${matricula}`;
+
+    await saveTask(taskId, 'juridico', matricula, null, 'PENDING', 'Consultando colaborador no Senior...');
+
+    try {
+      let nome: string | null = null;
+      try {
+        nome = await soapService.getColaboradorName(userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) {
+        console.warn("Não foi possível buscar o nome do colaborador:", e);
+      }
+
+      await saveTask(taskId, 'juridico', matricula, nome, 'PENDING', 'Buscando relatório de Afastamentos...');
+
+      let blobAfastamentos: Blob | null = null;
+      try {
+        blobAfastamentos = await soapService.getReport("AFASTAMENTOS", userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) { console.warn("Erro Afastamentos:", e); }
+
+      let blobCTPS: Blob | null = null;
+      try {
+        await saveTask(taskId, 'juridico', matricula, nome, 'PENDING', 'Buscando ficha CTPS...');
+        blobCTPS = await soapService.getReport("CTPS", userCredentials.usuario, userCredentials.senha, matricula);
+      } catch (e) { console.warn("Erro CTPS:", e); }
+
+      await saveTask(taskId, 'juridico', matricula, nome, 'PENDING', 'Salvando relatórios jurídicos localmente...');
+
+      const base64Afastamentos = blobAfastamentos ? await blobToBase64(blobAfastamentos) : null;
+      const base64CTPS = blobCTPS ? await blobToBase64(blobCTPS) : null;
+
+      let pathAfastamentos: string | null = null;
+      let pathCTPS: string | null = null;
+
+      try {
+        if (base64Afastamentos) {
+          pathAfastamentos = await invoke<string>("save_pdf_file", {
+            base64Data: base64Afastamentos,
+            fileName: `${matricula}_Afastamentos.pdf`,
+            subFolder: matricula,
+          });
+        }
+        if (base64CTPS) {
+          pathCTPS = await invoke<string>("save_pdf_file", {
+            base64Data: base64CTPS,
+            fileName: `${matricula}_CTPS.pdf`,
+            subFolder: matricula,
+          });
+        }
+      } catch (e) {
+        console.warn("Não foi possível salvar PDFs jurídicos em disco:", e);
+      }
+
+      const resultsPayload: any[] = [];
+      const reports: ReportData[] = [];
+
+      if (base64Afastamentos) {
+        resultsPayload.push({
+          type: "AFASTAMENTOS",
+          title: "Afastamentos do Colaborador",
+          ...(pathAfastamentos ? { filePath: pathAfastamentos } : { base64: base64Afastamentos })
+        });
+        reports.push({
+          type: "AFASTAMENTOS",
+          title: "Afastamentos do Colaborador",
+          blob: blobAfastamentos,
+          url: URL.createObjectURL(blobAfastamentos!)
+        });
+      }
+
+      if (base64CTPS) {
+        resultsPayload.push({
+          type: "CTPS",
+          title: "Ficha CTPS do Colaborador",
+          ...(pathCTPS ? { filePath: pathCTPS } : { base64: base64CTPS })
+        });
+        reports.push({
+          type: "CTPS",
+          title: "Ficha CTPS do Colaborador",
+          blob: blobCTPS,
+          url: URL.createObjectURL(blobCTPS!)
+        });
+      }
+
+      if (resultsPayload.length === 0) {
+        throw new Error("Nenhum documento jurídico pôde ser encontrado para este colaborador.");
+      }
+
+      setResultsCache(prev => ({ ...prev, [taskId]: reports }));
+      await saveTask(taskId, 'juridico', matricula, nome, 'SUCCESS', 'Concluído', undefined, JSON.stringify(resultsPayload));
+    } catch (err: any) {
+      const errMsg = err.message || "Erro desconhecido";
+      await saveTask(taskId, 'juridico', matricula, null, 'ERROR', 'Falha na extração jurídica', errMsg);
     }
   };
 
@@ -548,7 +585,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const parsed = JSON.parse(jsonStr);
 
-      if (id.startsWith('documento_') || id.startsWith('holerite_')) {
+      if (id.startsWith('documento_') || id.startsWith('holerite_') || id.startsWith('juridico_')) {
         const allReports: any[] = [];
         for (const r of parsed) {
           let base64 = r.base64;
@@ -594,6 +631,7 @@ export const ExtractionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       tasks,
       loadTasks,
       startDocumentoExtraction,
+      startJuridicoExtraction,
       startConvocacaoSearch,
       startHoleriteExtraction,
       deleteTask,

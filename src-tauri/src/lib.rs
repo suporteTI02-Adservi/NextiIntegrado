@@ -27,10 +27,7 @@ pub mod commands {
 
         let res = client
             .post("https://api.nexti.com/security/oauth/token")
-            .header(
-                "Authorization",
-                "Basic <token>",
-            )
+            .header("Authorization", "Basic <token>")
             .form(&params)
             .send()
             .await
@@ -180,7 +177,10 @@ pub mod commands {
         let text = res.text().await.map_err(|e| e.to_string())?;
 
         if !status.is_success() {
-            return Err(format!("Erro na requisição SOAP: Status {}\nDetalhes: {}", status, text));
+            return Err(format!(
+                "Erro na requisição SOAP: Status {}\nDetalhes: {}",
+                status, text
+            ));
         }
 
         Ok(text)
@@ -188,7 +188,8 @@ pub mod commands {
     #[tauri::command]
     pub async fn consult_collaborator_soap(xml_payload: String) -> Result<String, String> {
         let client = reqwest::Client::new();
-        let url = "http://snrsj:8080/g5-senior-services/rubi_Synccom.senior.g5.rh.fp.USUColaborador";
+        let url =
+            "http://snrsj:8080/g5-senior-services/rubi_Synccom.senior.g5.rh.fp.USUColaborador";
 
         let res = client
             .post(url)
@@ -202,20 +203,76 @@ pub mod commands {
         let text = res.text().await.map_err(|e| e.to_string())?;
 
         if !status.is_success() {
-            return Err(format!("Erro na requisição SOAP (USUColaborador): Status {}\nDetalhes: {}", status, text));
+            return Err(format!(
+                "Erro na requisição SOAP (USUColaborador): Status {}\nDetalhes: {}",
+                status, text
+            ));
         }
 
         Ok(text)
     }
 
-    use tauri::{AppHandle, Manager};
-    use rusqlite::{Connection, params};
+    #[tauri::command]
+    pub async fn generate_ia_response(
+        client_id: String,
+        client_secret: String,
+        system: String,
+        prompt: String,
+        model: String,
+        think: bool,
+    ) -> Result<String, String> {
+        let client = reqwest::Client::new();
+        let url = "https://api.incubebots.com/api/generate";
+
+        let body = serde_json::json!({
+            "model": model,
+            "system": system,
+            "prompt": prompt,
+            "stream": false,
+            "think": think,
+            "keep_alive": "30m",
+            "options": {
+                "temperature": 0.2,
+                "top_p": 0.9,
+                "top_k": 40,
+                "num_predict": 500,
+                "num_ctx": 8192,
+                "seed": 42,
+                "repeat_penality": 1.1
+            }
+        });
+
+        let res = client
+            .post(url)
+            .header("CF-Access-Client-Id", client_id)
+            .header("CF-Access-Client-Secret", client_secret)
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let status = res.status();
+        let text = res.text().await.map_err(|e| e.to_string())?;
+
+        if !status.is_success() {
+            return Err(format!(
+                "Erro na API de IA: Status {}\nDetalhes: {}",
+                status, text
+            ));
+        }
+
+        Ok(text)
+    }
+
+    use rusqlite::{params, Connection};
     use std::path::PathBuf;
+    use tauri::{AppHandle, Manager};
 
     fn get_db_path(app_handle: &AppHandle) -> PathBuf {
-        let mut path = app_handle.path().app_data_dir().unwrap_or_else(|_| {
-            std::env::current_dir().unwrap_or_default()
-        });
+        let mut path = app_handle
+            .path()
+            .app_data_dir()
+            .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
         // Certifica que a pasta de dados do app existe
         let _ = std::fs::create_dir_all(&path);
         path.push("nexti_integrado.db");
@@ -225,7 +282,7 @@ pub mod commands {
     pub fn init_db(app_handle: &AppHandle) -> Result<(), String> {
         let db_path = get_db_path(app_handle);
         let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-        
+
         conn.execute(
             "CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
@@ -239,8 +296,9 @@ pub mod commands {
                 updated_at INTEGER NOT NULL
             )",
             [],
-        ).map_err(|e| e.to_string())?;
-        
+        )
+        .map_err(|e| e.to_string())?;
+
         Ok(())
     }
 
@@ -258,7 +316,7 @@ pub mod commands {
     ) -> Result<(), String> {
         let db_path = get_db_path(&app_handle);
         let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-        
+
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -298,32 +356,34 @@ pub mod commands {
     pub async fn get_tasks_db(app_handle: AppHandle) -> Result<serde_json::Value, String> {
         let db_path = get_db_path(&app_handle);
         let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-        
+
         let mut stmt = conn
             .prepare("SELECT id, task_type, matricula, nome, status, step, error_msg, updated_at FROM tasks ORDER BY updated_at DESC")
             .map_err(|e| e.to_string())?;
-            
-        let task_iter = stmt.query_map([], |row| {
-            let id: String = row.get(0)?;
-            let task_type: String = row.get(1)?;
-            let matricula: String = row.get(2)?;
-            let nome: Option<String> = row.get(3)?;
-            let status: String = row.get(4)?;
-            let step: String = row.get(5)?;
-            let error_msg: Option<String> = row.get(6)?;
-            let updated_at: i64 = row.get(7)?;
-            
-            Ok(serde_json::json!({
-                "id": id,
-                "task_type": task_type,
-                "matricula": matricula,
-                "nome": nome,
-                "status": status,
-                "step": step,
-                "error_msg": error_msg,
-                "updated_at": updated_at
-            }))
-        }).map_err(|e| e.to_string())?;
+
+        let task_iter = stmt
+            .query_map([], |row| {
+                let id: String = row.get(0)?;
+                let task_type: String = row.get(1)?;
+                let matricula: String = row.get(2)?;
+                let nome: Option<String> = row.get(3)?;
+                let status: String = row.get(4)?;
+                let step: String = row.get(5)?;
+                let error_msg: Option<String> = row.get(6)?;
+                let updated_at: i64 = row.get(7)?;
+
+                Ok(serde_json::json!({
+                    "id": id,
+                    "task_type": task_type,
+                    "matricula": matricula,
+                    "nome": nome,
+                    "status": status,
+                    "step": step,
+                    "error_msg": error_msg,
+                    "updated_at": updated_at
+                }))
+            })
+            .map_err(|e| e.to_string())?;
 
         let mut tasks = Vec::new();
         for task in task_iter {
@@ -334,14 +394,17 @@ pub mod commands {
     }
 
     #[tauri::command]
-    pub async fn get_task_results_db(app_handle: AppHandle, id: String) -> Result<Option<String>, String> {
+    pub async fn get_task_results_db(
+        app_handle: AppHandle,
+        id: String,
+    ) -> Result<Option<String>, String> {
         let db_path = get_db_path(&app_handle);
         let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-        
+
         let mut stmt = conn
             .prepare("SELECT results_json FROM tasks WHERE id = ?1")
             .map_err(|e| e.to_string())?;
-            
+
         let mut rows = stmt.query(params![id]).map_err(|e| e.to_string())?;
         if let Some(row) = rows.next().map_err(|e| e.to_string())? {
             let results_json: Option<String> = row.get(0).map_err(|e| e.to_string())?;
@@ -355,10 +418,10 @@ pub mod commands {
     pub async fn delete_task_db(app_handle: AppHandle, id: String) -> Result<(), String> {
         let db_path = get_db_path(&app_handle);
         let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
-        
+
         conn.execute("DELETE FROM tasks WHERE id = ?1", params![id])
             .map_err(|e| e.to_string())?;
-            
+
         Ok(())
     }
 
@@ -371,9 +434,10 @@ pub mod commands {
         file_name: String,
         sub_folder: String,
     ) -> Result<String, String> {
-        let mut dir = app_handle.path().app_data_dir().unwrap_or_else(|_| {
-            std::env::current_dir().unwrap_or_default()
-        });
+        let mut dir = app_handle
+            .path()
+            .app_data_dir()
+            .unwrap_or_else(|_| std::env::current_dir().unwrap_or_default());
         dir.push("pdfs");
         dir.push(&sub_folder);
         let _ = std::fs::create_dir_all(&dir);
@@ -381,11 +445,15 @@ pub mod commands {
         dir.push(&file_name);
 
         let bytes = general_purpose::STANDARD
-            .decode(base64_data.replace("\r", "").replace("\n", "").replace(" ", ""))
+            .decode(
+                base64_data
+                    .replace("\r", "")
+                    .replace("\n", "")
+                    .replace(" ", ""),
+            )
             .map_err(|e| format!("Erro ao decodificar base64: {}", e))?;
 
-        std::fs::write(&dir, &bytes)
-            .map_err(|e| format!("Erro ao salvar arquivo PDF: {}", e))?;
+        std::fs::write(&dir, &bytes).map_err(|e| format!("Erro ao salvar arquivo PDF: {}", e))?;
 
         Ok(dir.to_string_lossy().to_string())
     }
@@ -400,4 +468,3 @@ pub mod commands {
         Ok(encoded)
     }
 }
-

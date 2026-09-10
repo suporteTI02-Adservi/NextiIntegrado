@@ -1,5 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
+import { abortable } from './abortable';
+import { extractPageText } from './pdfText';
 
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
@@ -89,5 +91,36 @@ export async function splitHoleritePdf(
   } catch (err) {
     console.error("Erro ao dividir PDF:", err);
     throw err;
+  }
+}
+
+export async function extractTextFromPdf(blob: Blob, signal = new AbortController().signal): Promise<string> {
+  signal.throwIfAborted();
+  const arrayBuffer = await abortable(blob.arrayBuffer(), signal);
+  signal.throwIfAborted();
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+  let destroyed: Promise<void> | undefined;
+  const destroy = () => { destroyed ??= loadingTask.destroy().catch(() => undefined); };
+  signal.addEventListener('abort', destroy, { once: true });
+  try {
+    const pdfjsDoc = await abortable(loadingTask.promise, signal);
+    
+    const numPages = pdfjsDoc.numPages;
+    let fullText = "";
+    
+    for (let i = 1; i <= numPages; i++) {
+      signal.throwIfAborted();
+      const page = await abortable(pdfjsDoc.getPage(i), signal);
+      const textContent = await abortable(page.getTextContent(), signal);
+      const pageText = extractPageText(textContent.items);
+      fullText += `[Página ${i}]\n${pageText}\n`;
+      page.cleanup();
+    }
+    signal.throwIfAborted();
+    // Page labels alone must not make an image-only PDF look readable.
+    return fullText.replace(/\[Página \d+\]/g, '').trim() ? fullText.trim() : '';
+  } finally {
+    signal.removeEventListener('abort', destroy);
+    destroy();
   }
 }

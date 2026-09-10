@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
-import { FaMoon, FaSun, FaHome, FaUsers, FaFilePdf, FaPlus, FaMoneyBillWave, FaChevronLeft } from "react-icons/fa";
+import { FaMoon, FaSun, FaHome, FaUsers, FaFilePdf, FaPlus, FaMoneyBillWave, FaChevronLeft, FaBalanceScale } from "react-icons/fa";
+import { ChatModal } from "../ChatModal/ChatModal";
 import styles from "./Layout.module.css";
 
 interface LayoutProps {
@@ -20,6 +21,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className={styles.layout}>
+      {/* Plano de fundo com 5 blobs difusos orgânicos em tons de azul */}
+      <div className="bg-blobs-container" aria-hidden="true">
+        <div className="blob1" />
+        <div className="blob2" />
+        <div className="blob3" />
+        <div className="blob4" />
+        <div className="blob5" />
+      </div>
+
       <header className={styles.topbar}>
         <div className={styles.brand}>
           <h1>Nexti Integrado</h1>
@@ -47,7 +57,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {children}
       </main>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button - Funções */}
       <div className={styles.fabContainer}>
         <div className={`${styles.fabMenu} ${isFabOpen ? styles.fabMenuOpen : ''}`}>
           <div className={styles.fabItemWrapper}>
@@ -60,12 +70,21 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </div>
           <div className={styles.fabItemWrapper}>
-            <span className={styles.fabLabel}>Documentos</span>
+            <span className={styles.fabLabel}>Homologação</span>
             <div 
               className={styles.fabItem} 
-              onClick={() => { navigate('/documentos'); setIsFabOpen(false); }}
+              onClick={() => { navigate('/documentos?tipo=homologacao'); setIsFabOpen(false); }}
             >
               <FaFilePdf />
+            </div>
+          </div>
+          <div className={styles.fabItemWrapper}>
+            <span className={styles.fabLabel}>Jurídico</span>
+            <div 
+              className={styles.fabItem} 
+              onClick={() => { navigate('/documentos?tipo=juridico'); setIsFabOpen(false); }}
+            >
+              <FaBalanceScale />
             </div>
           </div>
           <div className={styles.fabItemWrapper}>
@@ -85,6 +104,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <FaPlus />
         </button>
       </div>
+      
+      {/* Modal Inteligente de Chat flutuando no canto direito */}
+      <ChatModal />
     </div>
   );
 };

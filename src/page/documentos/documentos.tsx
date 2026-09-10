@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Button } from "../../components/Button/Button";
-import { ReportCard } from "../../components/ReportCard/ReportCard";
 import { useToast } from "../../context/ToastContext";
 import { useExtraction, ReportData } from "../../context/ExtractionContext";
+import { PageModal } from "../../components/Modal/PageModal";
+import { ItemListModal } from "../../components/ListModal/ItemListModal";
 import styles from "./documentos.module.css";
 import { open } from "@tauri-apps/plugin-dialog";
 import { writeFile, readFile } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { FaBars, FaChevronLeft, FaSave, FaFilePdf, FaMoneyBillWave } from "react-icons/fa";
+import { FaBars, FaChevronLeft, FaFilePdf, FaMoneyBillWave, FaBalanceScale } from "react-icons/fa";
 
 const Documentos: React.FC = () => {
-  const { userCredentials, setCredentials, tasks, startDocumentoExtraction, startHoleriteExtraction, deleteTask, getTaskResults, loadTasks } = useExtraction();
+  const { userCredentials, setCredentials, tasks, startDocumentoExtraction, startJuridicoExtraction, startHoleriteExtraction, deleteTask, getTaskResults, loadTasks } = useExtraction();
   const [usuario, setUsuario] = useState(userCredentials?.usuario || "");
   const [senha, setSenha] = useState(userCredentials?.senha || "");
   const [matriculaInput, setMatriculaInput] = useState("");
@@ -24,12 +25,13 @@ const Documentos: React.FC = () => {
 
   const { showToast } = useToast();
 
-  // Detectar modo holerite via query param
+  // Detectar modo (holerite, juridico, homologacao/documento) via query param
   const tipoParam = searchParams.get("tipo");
   const isHoleriteMode = tipoParam === "holerite";
+  const isJuridicoMode = tipoParam === "juridico";
 
   const matriculaAtual = searchParams.get("aviso");
-  const taskPrefix = isHoleriteMode ? "holerite" : "documento";
+  const taskPrefix = isHoleriteMode ? "holerite" : isJuridicoMode ? "juridico" : "documento";
   const taskId = `${taskPrefix}_${matriculaAtual}`;
   const currentTask = tasks.find(e => e.id === taskId);
 
@@ -89,6 +91,10 @@ const Documentos: React.FC = () => {
       const newParams: Record<string, string> = { aviso: matriculaInput };
       if (isHoleriteMode) {
         newParams.tipo = "holerite";
+      } else if (isJuridicoMode) {
+        newParams.tipo = "juridico";
+      } else {
+        newParams.tipo = "homologacao";
       }
       setSearchParams(newParams);
       setSelectedReportUrl(null);
@@ -101,9 +107,13 @@ const Documentos: React.FC = () => {
         startHoleriteExtraction(matriculaInput).catch(err => {
           showToast(err.message || "Erro ao iniciar a extração de holerites.");
         });
+      } else if (isJuridicoMode) {
+        startJuridicoExtraction(matriculaInput).catch(err => {
+          showToast(err.message || "Erro ao iniciar a extração jurídica.");
+        });
       } else {
         startDocumentoExtraction(matriculaInput).catch(err => {
-          showToast(err.message || "Erro ao iniciar a extração.");
+          showToast(err.message || "Erro ao iniciar a extração de homologação.");
         });
       }
     } catch (err: any) {
@@ -193,170 +203,166 @@ const Documentos: React.FC = () => {
     }
   };
 
-  const pageTitle = isHoleriteMode ? "Consulta de Holerites" : "Consulta de Documentos";
-  const pageIcon = isHoleriteMode ? <FaMoneyBillWave size={64} color="var(--text-secondary)" opacity={0.5} /> : <FaFilePdf size={64} color="var(--text-secondary)" opacity={0.5} />;
+  const pageTitle = isHoleriteMode ? "Consulta de Holerites" : isJuridicoMode ? "Consulta Jurídica" : "Consulta de Homologação";
+  const pageIcon = isHoleriteMode ? <FaMoneyBillWave size={64} color="var(--text-secondary)" opacity={0.5} /> : isJuridicoMode ? <FaBalanceScale size={64} color="var(--text-secondary)" opacity={0.5} /> : <FaFilePdf size={64} color="var(--text-secondary)" opacity={0.5} />;
   const emptyMsg = isHoleriteMode
     ? "Nenhum holerite selecionado"
-    : "Nenhum documento selecionado";
+    : isJuridicoMode
+    ? "Nenhum documento jurídico selecionado"
+    : "Nenhum documento de homologação selecionado";
   const emptyDesc = isHoleriteMode
     ? "Insira a matrícula do colaborador no painel lateral para buscar o histórico completo de holerites."
-    : "Selecione uma extração ativa ou inicie uma nova consulta no painel lateral.";
-  const loadingTitle = isHoleriteMode ? "Extraindo Histórico de Holerites..." : "Extraindo Relatórios...";
+    : isJuridicoMode
+    ? "Insira a matrícula do colaborador no painel lateral para buscar os relatórios de Afastamentos e a Ficha CTPS."
+    : "Insira a matrícula do colaborador no painel lateral para buscar o Comprovante Bancário, CTPS Digital e Comprovante de Rescisão.";
+  const loadingTitle = isHoleriteMode ? "Extraindo Histórico de Holerites..." : isJuridicoMode ? "Extraindo Documentos Jurídicos..." : "Extraindo Relatórios de Homologação...";
   const loadingDesc = isHoleriteMode
     ? "O sistema está buscando todo o histórico de holerites do colaborador. Aguarde."
-    : "O processo está rodando em segundo plano. Você pode consultar outras matrículas enquanto espera.";
+    : isJuridicoMode
+    ? "O sistema está buscando o relatório de Afastamentos e a Ficha CTPS do colaborador. Aguarde."
+    : "O sistema está buscando o Comprovante Bancário, CTPS Digital e Rescisão. Aguarde.";
 
   return (
-    <div className={styles.layoutContainer}>
-      {/* Botão para alternar a Sidebar */}
-      <button
-        className={styles.toggleBtn}
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-        title={isSidebarOpen ? "Recolher Painel" : "Expandir Painel"}
-      >
-        {isSidebarOpen ? <FaChevronLeft /> : <FaBars />}
-      </button>
+    <PageModal>
+      <div className={styles.layoutContainer}>
+        {/* Botão para alternar a Sidebar */}
+        <button
+          className={styles.toggleBtn}
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          title={isSidebarOpen ? "Recolher Painel" : "Expandir Painel"}
+        >
+          {isSidebarOpen ? <FaChevronLeft /> : <FaBars />}
+        </button>
 
-      {/* Sidebar (Formulário) */}
-      <aside className={`${styles.sidebar} ${!isSidebarOpen ? styles.sidebarCollapsed : ''}`}>
-        <h2 style={{ marginTop: '2rem' }}>{pageTitle}</h2>
-        <form onSubmit={handleGenerate} className={styles.form}>
-          {!userCredentials && (
-            <>
-              <div className={styles.inputGroup}>
-                <label htmlFor="usuario">Usuário Rubi</label>
-                <input
-                  id="usuario"
-                  type="text"
-                  value={usuario}
-                  onChange={(e) => setUsuario(e.target.value)}
-                  placeholder="Seu usuário"
-                  required
-                />
-              </div>
-              <div className={styles.inputGroup}>
-                <label htmlFor="senha">Senha Rubi</label>
-                <input
-                  id="senha"
-                  type="password"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="Sua senha"
-                  required
-                />
-              </div>
-            </>
+        {/* Sidebar (Formulário) */}
+        <aside className={`${styles.sidebar} ${!isSidebarOpen ? styles.sidebarCollapsed : ''}`}>
+          <h2 style={{ marginTop: '2rem' }}>{pageTitle}</h2>
+          <form onSubmit={handleGenerate} className={styles.form}>
+            {!userCredentials && (
+              <>
+                <div className={styles.inputGroup}>
+                  <label htmlFor="usuario">Usuário Rubi</label>
+                  <input
+                    id="usuario"
+                    type="text"
+                    value={usuario}
+                    onChange={(e) => setUsuario(e.target.value)}
+                    placeholder="Seu usuário"
+                    required
+                  />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label htmlFor="senha">Senha Rubi</label>
+                  <input
+                    id="senha"
+                    type="password"
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    placeholder="Sua senha"
+                    required
+                  />
+                </div>
+              </>
+            )}
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="matricula">Matrícula</label>
+              <input
+                id="matricula"
+                type="text"
+                value={matriculaInput}
+                onChange={handleMatriculaChange}
+                placeholder="Ex: 12345"
+                required
+              />
+            </div>
+
+            <Button variant="primary" type="submit" style={{ width: "100%" }}>
+              {isHoleriteMode ? "Buscar Holerites" : "Buscar Relatórios"}
+            </Button>
+          </form>
+
+          {userCredentials && (
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '1rem' }}>
+              Credenciais salvas. Para alterar, limpe os dados ou reinicie a sessão.
+            </p>
+          )}
+        </aside>
+
+        {/* Área Principal (Resultados) */}
+        <main className={styles.mainContent}>
+          {!matriculaAtual && (
+            <div style={{ textAlign: 'center', marginTop: '10%' }}>
+              {pageIcon}
+              <h2 style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>{emptyMsg}</h2>
+              <p>{emptyDesc}</p>
+            </div>
           )}
 
-          <div className={styles.inputGroup}>
-            <label htmlFor="matricula">Matrícula</label>
-            <input
-              id="matricula"
-              type="text"
-              value={matriculaInput}
-              onChange={handleMatriculaChange}
-              placeholder="Ex: 12345"
-              required
-            />
-          </div>
-
-          <Button variant="primary" type="submit" style={{ width: "100%" }}>
-            {isHoleriteMode ? "Buscar Holerites" : "Buscar Relatórios"}
-          </Button>
-        </form>
-
-        {userCredentials && (
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '1rem' }}>
-            Credenciais salvas. Para alterar, limpe os dados ou reinicie a sessão.
-          </p>
-        )}
-      </aside>
-
-      {/* Área Principal (Resultados) */}
-      <main className={styles.mainContent}>
-        {!matriculaAtual && (
-          <div style={{ textAlign: 'center', marginTop: '10%' }}>
-            {pageIcon}
-            <h2 style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>{emptyMsg}</h2>
-            <p>{emptyDesc}</p>
-          </div>
-        )}
-
-        {matriculaAtual && (!currentTask || currentTask.status === 'PENDING') && (
-          <div className={styles.loadingCard} style={{ margin: '0 auto' }}>
-            <h2>{loadingTitle}</h2>
-            <p>{loadingDesc}</p>
-            <div style={{ margin: '1rem 0', fontWeight: 'bold' }}>
-              Etapa: {currentTask?.step || 'Consultando no Senior...'}
-            </div>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: '50%', animation: 'pulse 1.5s infinite' }}></div>
-            </div>
-            <style>
-              {`@keyframes pulse { 0% { width: 10%; } 50% { width: 90%; } 100% { width: 10%; } }`}
-            </style>
-          </div>
-        )}
-
-        {currentTask && currentTask.status === 'ERROR' && (
-          <div className={styles.error} style={{ margin: '0 auto', maxWidth: '600px', padding: '2rem', background: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', borderRadius: '12px' }}>
-            <h2 style={{ color: '#e74c3c' }}>Falha na Extração</h2>
-            <p>{currentTask.error_msg}</p>
-          </div>
-        )}
-
-        {currentTask && currentTask.status === 'SUCCESS' && reports.length > 0 && (
-          <section className={styles.resultsArea}>
-            <h2>
-              {isHoleriteMode
-                ? `Holerites Encontrados (${currentTask.matricula})`
-                : `Documentos Encontrados (${currentTask.matricula})`
-              } - {currentTask.nome || ''}
-            </h2>
-
-            {isHoleriteMode && (
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                Os relatórios consolidados contêm todo o histórico do colaborador.
-              </p>
-            )}
-
-            <div className={styles.cardsGrid}>
-              {reports.map((report, idx) => (
-                <ReportCard
-                  key={idx}
-                  report={report}
-                  onVerify={handleVerify}
-                />
-              ))}
-            </div>
-
-            <div className={styles.downloadAllWrapper}>
-              <Button variant="primary" onClick={handleSaveAll} style={{ padding: '0.8rem 2rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <FaSave /> {isHoleriteMode ? "Salvar Holerites (Remove da Fila)" : "Salvar Relatórios (Remove da Fila)"}
-              </Button>
-            </div>
-
-            {selectedReportUrl && (
-              <div style={{
-                background: 'var(--bg-glass)',
-                borderRadius: '20px',
-                padding: '1rem',
-                height: '70vh',
-                boxShadow: '10px 10px 20px var(--shadow-dark), -10px -10px 20px var(--shadow-light)'
-              }}>
-                <object
-                  data={selectedReportUrl}
-                  type="application/pdf"
-                  style={{ width: '100%', height: '100%', borderRadius: '12px' }}
-                >
-                  <p>O seu visualizador não suporta PDFs nativamente. Tente salvar o arquivo.</p>
-                </object>
+          {matriculaAtual && (!currentTask || currentTask.status === 'PENDING') && (
+            <div className={styles.loadingCard} style={{ margin: '0 auto' }}>
+              <h2>{loadingTitle}</h2>
+              <p>{loadingDesc}</p>
+              <div style={{ margin: '1rem 0', fontWeight: 'bold' }}>
+                Etapa: {currentTask?.step || 'Consultando no Senior...'}
               </div>
-            )}
-          </section>
-        )}
-      </main>
-    </div>
+              <div className={styles.progressBar}>
+                <div className={styles.progressFill} style={{ width: '50%', animation: 'pulse 1.5s infinite' }}></div>
+              </div>
+              <style>
+                {`@keyframes pulse { 0% { width: 10%; } 50% { width: 90%; } 100% { width: 10%; } }`}
+              </style>
+            </div>
+          )}
+
+          {currentTask && currentTask.status === 'ERROR' && (
+            <div className={styles.error} style={{ margin: '0 auto', maxWidth: '600px', padding: '2rem', background: 'rgba(231, 76, 60, 0.1)', border: '1px solid #e74c3c', borderRadius: '12px' }}>
+              <h2 style={{ color: '#e74c3c' }}>Falha na Extração</h2>
+              <p>{currentTask.error_msg}</p>
+            </div>
+          )}
+
+          {currentTask && currentTask.status === 'SUCCESS' && reports.length > 0 && (
+            <>
+              <ItemListModal
+                title={isHoleriteMode ? "Holerites Encontrados" : isJuridicoMode ? "Documentos Jurídicos Encontrados" : "Documentos de Homologação Encontrados"}
+                collaboratorName={currentTask.matricula}
+                itemNoun={isHoleriteMode ? "os holerites" : isJuridicoMode ? "os documentos jurídicos" : "os documentos de homologação"}
+                searchPlaceholder={isHoleriteMode ? "Pesquisar holerite..." : isJuridicoMode ? "Pesquisar documento jurídico..." : "Pesquisar documento de homologação..."}
+                items={reports.map((report, idx) => ({
+                  id: idx,
+                  title: report.title,
+                  subtitle: report.type,
+                  type: report.title || report.type,
+                  rawItem: report
+                }))}
+                onDownloadAll={() => handleSaveAll()}
+                onPrimaryAction={(item) => handleVerify(item.rawItem.url)}
+              />
+
+              {selectedReportUrl && (
+                <div style={{
+                  background: 'var(--bg-glass)',
+                  borderRadius: '20px',
+                  padding: '1rem',
+                  height: '70vh',
+                  boxShadow: '10px 10px 20px var(--shadow-dark), -10px -10px 20px var(--shadow-light)',
+                  marginTop: '1rem'
+                }}>
+                  <object
+                    data={selectedReportUrl}
+                    type="application/pdf"
+                    style={{ width: '100%', height: '100%', borderRadius: '12px' }}
+                  >
+                    <p>O seu visualizador não suporta PDFs nativamente. Tente salvar o arquivo.</p>
+                  </object>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+    </PageModal>
   );
 };
 
