@@ -43,10 +43,7 @@ interface GenerateRequest {
 export class AiService {
   constructor(
     private readonly request: AiTransport = fetchAi,
-    private readonly credentials = () => ({
-      clientId: import.meta.env.VITE_CF_CLIENT_ID as string | undefined,
-      clientSecret: import.meta.env.VITE_CF_CLIENT_SECRET as string | undefined,
-    }),
+    private readonly credentials?: () => { clientId?: string; clientSecret?: string },
     private readonly timeouts = { idleMs: 90_000, totalMs: 180_000 },
   ) {}
 
@@ -55,8 +52,8 @@ export class AiService {
     if (byteLength(contextText) > getContextByteBudget(prompt)) {
       throw new Error('Os documentos excederam o limite de contexto da IA. Restrinja a pergunta.');
     }
-    const { clientId, clientSecret } = this.credentials();
-    if (!clientId || !clientSecret) throw new Error('Credenciais de acesso à IA não configuradas no aplicativo.');
+    const credentials = this.credentials?.();
+    if (credentials && (!credentials.clientId || !credentials.clientSecret)) throw new Error('Credenciais de acesso à IA não configuradas no aplicativo.');
     const controller = new AbortController();
     const relayAbort = () => controller.abort(signal?.reason);
     signal?.addEventListener('abort', relayAbort, { once: true });
@@ -110,7 +107,15 @@ export class AiService {
       progress('waiting');
       const pendingResponse = this.request('https://api.incubebots.com/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'CF-Access-Client-Id': clientId, 'CF-Access-Client-Secret': clientSecret },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/x-ndjson, application/json',
+          'User-Agent': 'NextiIntegrado/3.0',
+          ...(credentials ? {
+            'CF-Access-Client-Id': credentials.clientId!,
+            'CF-Access-Client-Secret': credentials.clientSecret!,
+          } : {}),
+        },
         body: JSON.stringify({
           model: 'qwen3.8:latest', system: SYSTEM_PROMPT + contextText, prompt,
           stream: true, think: false, keep_alive: '30m',
@@ -124,9 +129,19 @@ export class AiService {
       }, () => undefined);
       const response = await abortable(pendingResponse, controller.signal);
       metrics.headersMs = Math.round(performance.now() - startedAt);
-      reader = response.body?.getReader();
-      if (!response.ok) throw new Error(`Erro ao acessar a IA (HTTP ${response.status}). Verifique o serviço e a autorização de acesso.`);
+      if (!response.ok) {
+        const cfRay = response.headers.get('cf-ray');
+        const responseText = await response.text().catch(() => '');
+        const isCloudflareDenial = response.status === 403
+          && /cloudflare|access denied|forbidden|authentication/i.test(responseText);
+        const reference = cfRay ? ' Referência CF-Ray: ' + cfRay + '.' : '';
+        if (isCloudflareDenial || response.status === 403) {
+          throw new Error('O Cloudflare recusou as credenciais da IA (HTTP 403). Recompile e reinicie o aplicativo ou confira a política do Service Token.' + reference);
+        }
+        throw new Error('Erro ao acessar a IA (HTTP ' + response.status + ').' + reference);
+      }
       if (response.headers.get('content-type')?.includes('text/html')) throw new Error('O servidor retornou uma página HTML em vez da resposta da IA. Verifique o proxy e a autenticação.');
+      reader = response.body?.getReader();
       if (!reader) throw new Error('O servidor de IA retornou uma resposta sem conteúdo.');
       resetIdle();
       const decoder = new TextDecoder();

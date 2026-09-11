@@ -16,8 +16,8 @@ export const getBadge = (title: string) => {
   if (t.includes('ctps digital')) return { label: 'CTPS Digital', color: '#5DADE2' };
   if (t.includes('ctps')) return { label: 'CTPS', color: '#3498DB' };
   if (t.includes('afastamento')) return { label: 'Afastamento', color: '#9B59B6' };
-  if (t.includes('cartão') || t.includes('cartao') || t.includes('convocação de cartão') || t.includes('convocacao de cartao')) {
-    return { label: 'Convocação de Cartão', color: '#E67E22' };
+  if (t.includes('cartão') || t.includes('cartao') || t.includes('Cartão') || t.includes('convocacao de cartao')) {
+    return { label: 'Cartão', color: '#E67E22' };
   }
   if (t.includes('alimentação') || t.includes('alimentacao') || /\bva\b/.test(t)) {
     return { label: 'VA', color: '#E67E22' };

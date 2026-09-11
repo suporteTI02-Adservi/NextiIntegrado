@@ -19,6 +19,10 @@ pub mod commands {
             )?
             .to_string();
 
+        let auth_token = option_env!("AUTH_TOKEN")
+            .ok_or("A variável de ambiente AUTH_TOKEN não foi detectada no momento da compilação")?
+            .to_string();
+
         let params = [
             ("grant_type", "client_credentials"),
             ("client_id", &client_id),
@@ -27,7 +31,7 @@ pub mod commands {
 
         let res = client
             .post("https://api.nexti.com/security/oauth/token")
-            .header("Authorization", "Basic <token>")
+            .header("Authorization", format!("Basic {}", auth_token))
             .form(&params)
             .send()
             .await
@@ -214,13 +218,15 @@ pub mod commands {
 
     #[tauri::command]
     pub async fn generate_ia_response(
-        client_id: String,
-        client_secret: String,
         system: String,
         prompt: String,
         model: String,
         think: bool,
     ) -> Result<String, String> {
+        let client_id = option_env!("VITE_CF_CLIENT_ID")
+            .ok_or("A credencial VITE_CF_CLIENT_ID da IA não foi incluída na compilação.")?;
+        let client_secret = option_env!("VITE_CF_CLIENT_SECRET")
+            .ok_or("A credencial VITE_CF_CLIENT_SECRET da IA não foi incluída na compilação.")?;
         let client = reqwest::Client::new();
         let url = "https://api.incubebots.com/api/generate";
 
@@ -235,10 +241,10 @@ pub mod commands {
                 "temperature": 0.2,
                 "top_p": 0.9,
                 "top_k": 40,
-                "num_predict": 500,
+                "num_predict": 768,
                 "num_ctx": 8192,
                 "seed": 42,
-                "repeat_penality": 1.1
+                "repeat_penalty": 1.1
             }
         });
 
@@ -246,6 +252,7 @@ pub mod commands {
             .post(url)
             .header("CF-Access-Client-Id", client_id)
             .header("CF-Access-Client-Secret", client_secret)
+            .header("User-Agent", "NextiIntegrado/3.0")
             .json(&body)
             .send()
             .await

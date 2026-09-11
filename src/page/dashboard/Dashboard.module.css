@@ -285,3 +285,43 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Smoked glass: contraste e reflexo exclusivos do tema escuro. */
+[data-theme='dark'] .filters,
+[data-theme='dark'] .card,
+[data-theme='dark'] .emptyState {
+  background:
+    linear-gradient(145deg, rgba(35, 48, 62, 0.58), rgba(9, 17, 27, 0.52));
+  border-color: rgba(142, 193, 235, 0.17);
+  box-shadow:
+    0 16px 36px rgba(0, 5, 12, 0.3),
+    inset 0 1px 0 rgba(216, 238, 255, 0.1);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+[data-theme='dark'] .card:hover {
+  border-color: rgba(105, 184, 247, 0.32);
+  box-shadow:
+    0 22px 46px rgba(0, 5, 12, 0.46),
+    0 0 24px rgba(38, 127, 196, 0.1),
+    inset 0 1px 0 rgba(226, 243, 255, 0.15);
+}
+
+[data-theme='dark'] .searchInput,
+[data-theme='dark'] .filterGroup input,
+[data-theme='dark'] .filterGroup select {
+  background: linear-gradient(145deg, rgba(5, 12, 20, 0.8), rgba(17, 29, 42, 0.72));
+  border-color: rgba(126, 176, 218, 0.22);
+  box-shadow: inset 0 2px 8px rgba(0, 4, 10, 0.42), 0 1px 0 rgba(220, 240, 255, 0.05);
+}
+
+[data-theme='dark'] .searchInput:focus,
+[data-theme='dark'] .filterGroup input:focus,
+[data-theme='dark'] .filterGroup select:focus {
+  border-color: rgba(103, 188, 255, 0.68);
+  box-shadow:
+    inset 0 2px 8px rgba(0, 4, 10, 0.38),
+    0 0 0 3px rgba(63, 157, 231, 0.13),
+    0 0 22px rgba(40, 139, 215, 0.1);
+}

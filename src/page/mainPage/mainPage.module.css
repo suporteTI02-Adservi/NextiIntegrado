@@ -388,3 +388,16 @@ body, html {
   color: var(--header-text);
   font-size: 1.2rem;
 }
+/* Smoked glass page transparency: deixa o painel principal aparecer. */
+[data-theme='dark'] .page {
+  background-color: transparent;
+}
+
+[data-theme='dark'] .header,
+[data-theme='dark'] .sidebar,
+[data-theme='dark'] .form {
+  border-color: rgba(145, 198, 241, 0.16);
+  box-shadow:
+    0 16px 36px rgba(0, 5, 12, 0.28),
+    inset 0 1px 0 rgba(218, 239, 255, 0.09);
+}

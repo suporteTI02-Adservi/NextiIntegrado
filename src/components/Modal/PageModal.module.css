@@ -1,10 +1,9 @@
 .overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 1000;
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -34,9 +33,11 @@
 
 .modalContainer {
   position: relative;
-  width: 95vw;
-  height: 90vh;
-  max-width: 1400px;
+  width: min(1400px, calc(100vw - 48px));
+  height: min(900px, calc(100dvh - 48px));
+  max-width: none;
+  max-height: none;
+  box-sizing: border-box;
   background-color: var(--bg-glass);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -113,6 +114,30 @@
 
 .content {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow: auto;
   border-radius: 24px;
+}
+
+.content > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 720px), (max-height: 600px) {
+  .modalContainer {
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
+    border-radius: 18px;
+  }
+
+  .content {
+    border-radius: 18px;
+  }
+
+  .closeBtn {
+    top: 10px;
+    right: 10px;
+  }
 }

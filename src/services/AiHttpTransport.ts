@@ -90,4 +90,27 @@ export function createAiTransport(native: NativeInvoke = invoke): AiTransport {
   };
 }
 
-export const fetchAi = createAiTransport();
+/** Route production AI calls through Rust so release builds use compile-time credentials. */
+export function createRustAiTransport(native: NativeInvoke = invoke): AiTransport {
+  return async (_url, init) => {
+    init.signal?.throwIfAborted();
+    const body = JSON.parse(String(init.body || '{}')) as {
+      system?: string; prompt?: string; model?: string; think?: boolean;
+    };
+    const pending = native('generate_ia_response', {
+      system: body.system || '',
+      prompt: body.prompt || '',
+      model: body.model || 'qwen3.8:latest',
+      think: body.think ?? false,
+    });
+    const text = await new Promise<string>((resolve, reject) => {
+      const abort = () => reject(init.signal?.reason || new DOMException('Operação cancelada.', 'AbortError'));
+      init.signal?.addEventListener('abort', abort, { once: true });
+      pending.then(value => resolve(String(value)), reject)
+        .finally(() => init.signal?.removeEventListener('abort', abort));
+    });
+    return new Response(text, { headers: { 'content-type': 'application/json' } });
+  };
+}
+
+export const fetchAi = createRustAiTransport();

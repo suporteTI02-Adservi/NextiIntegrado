@@ -18,7 +18,7 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
   useEffect(() => {
     const timer = setTimeout(() => {
       finishIntro();
-    }, 6000);
+    }, 6500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -26,7 +26,7 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
     setIsVisible(false);
     setTimeout(() => {
       onComplete();
-    }, 500); // Aguarda o fade-out completo para chamar o onComplete
+    }, 800); // Aguarda o fade-out completo para chamar o onComplete
   };
 
   return (
@@ -45,9 +45,9 @@ export const IntroAnimation: React.FC<IntroAnimationProps> = ({ onComplete }) =>
             className={styles.sloganArea}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 3.5, duration: 0.8 }}
+            transition={{ delay: 0.45, duration: 0.9 }}
           >
-            <div className={styles.mainSlogan}>Mesma essência. Um novo patamar.</div>
+            <div className={styles.mainSlogan}><span>Mesma essência.</span><strong>Um novo patamar.</strong></div>
             <div className={styles.subSlogan}>Centralize • Organize • Descubra • Evolua</div>
           </motion.div>
 

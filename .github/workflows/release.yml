@@ -25,16 +25,26 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Restore build environment
+        shell: pwsh
+        env:
+          BUILD_ENV: ${{ secrets.ENV }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:BUILD_ENV)) {
+            throw 'O repository secret ENV está vazio ou indisponível.'
+          }
+          [System.IO.File]::WriteAllText(
+            (Join-Path $env:GITHUB_WORKSPACE '.env'),
+            $env:BUILD_ENV,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+
       - name: Build Tauri Application & Release
         uses: tauri-apps/tauri-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          SENIOR_USER: ${{ secrets.SENIOR_USER }}
-          SENIOR_PASS: ${{ secrets.SENIOR_PASS }}
-          CLIENT_ID: ${{ secrets.CLIENT_ID }}
-          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         with:
           tagName: v__VERSION__ # tauri-action substitui automaticamente pela versão do tauri.conf.json
           releaseName: 'Nexti Integrado v__VERSION__'

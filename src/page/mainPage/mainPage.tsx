@@ -7,7 +7,7 @@ import { Button } from "../../components/Button/Button";
 import { useToast } from "../../context/ToastContext";
 import { MessageModal } from "../../components/Modal/MessageModal";
 import { PageModal } from "../../components/Modal/PageModal";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useExtraction } from "../../context/ExtractionContext";
 import { ItemListModal } from "../../components/ListModal/ItemListModal";
 
@@ -15,7 +15,6 @@ const MainPage: React.FC = () => {
   const [matricula, setMatricula] = useState<string>("");
   const [downloadLoad, setDownloadLoad] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const { showToast } = useToast();

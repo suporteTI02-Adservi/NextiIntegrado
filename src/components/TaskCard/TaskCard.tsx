@@ -42,7 +42,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onNavigate, onDelete }
           <button 
             className={styles.deleteBtn} 
             onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-            title="Excluir Registro"
+            title="Excluir este registro"
           >
             <FaTrash size={12} />
           </button>

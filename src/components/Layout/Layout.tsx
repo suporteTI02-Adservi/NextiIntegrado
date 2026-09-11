@@ -14,6 +14,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isFabOpen, setIsFabOpen] = useState(false);
+  const showBackButton = !["/", "/extracoes"].includes(location.pathname);
 
   const isActive = (path: string) => {
     return location.pathname === path ? `${styles.tab} ${styles.activeTab}` : styles.tab;
@@ -49,7 +50,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
       
       <main className={styles.content}>
-        {location.pathname !== "/" && (
+        {showBackButton && (
           <button className={styles.backBtn} onClick={() => navigate(-1)}>
             <FaChevronLeft /> Voltar
           </button>
