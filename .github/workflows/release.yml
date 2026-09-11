@@ -52,3 +52,18 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
+
+      # A versão 3.0.0 consulta updater.json. Mantenha este alias para que ela
+      # consiga migrar para a primeira versão que passou a usar latest.json.
+      - name: Publish legacy updater manifest
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = (Get-Content 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
+          $tag = "v$version"
+          $compatDirectory = Join-Path $env:RUNNER_TEMP 'updater-compat'
+          New-Item -ItemType Directory -Path $compatDirectory -Force | Out-Null
+          gh release download $tag --pattern 'latest.json' --dir $compatDirectory
+          Copy-Item (Join-Path $compatDirectory 'latest.json') (Join-Path $compatDirectory 'updater.json')
+          gh release upload $tag (Join-Path $compatDirectory 'updater.json') --clobber
