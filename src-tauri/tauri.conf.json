@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "nextiintegrado",
-  "version": "3.0.2",
+  "version": "3.0.4",
   "identifier": "com.nexti.integrado",
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU2RjQ1Q0I2NUNGMkY0QzIKUldUQzlQSmN0bHowNXFaaVZLM1JxK245emVzejdTMHMvSVVRYVo1T1kvRStLNWpScjdDRG9DVFYK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM0RkUzOTc0ODc2MUEzQTAKUldTZ28yR0hkRG4rTk4zbXNnQ0RhZ0NqdmFvckgybGdxdTZUb3RPNngzWjJPMVZCNzNYRFM0OFEK",
       "endpoints": [
         "https://github.com/suporteTI02-Adservi/NextiIntegrado/releases/latest/download/latest.json"
       ]
@@ -20,7 +20,7 @@
   "app": {
     "windows": [
       {
-        "title": "Integração Nexti v3.0.2",
+        "title": "Integração Nexti v3.0.4",
         "width": 1280,
         "height": 600
       }
