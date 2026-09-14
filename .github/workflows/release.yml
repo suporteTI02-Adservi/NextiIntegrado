@@ -45,6 +45,53 @@ jobs:
             [System.Text.UTF8Encoding]::new($false)
           )
 
+          $requiredVariables = @(
+            'SENIOR_USER',
+            'SENIOR_PASS',
+            'CLIENT_ID',
+            'CLIENT_SECRET',
+            'AUTH_TOKEN',
+            'VITE_CF_CLIENT_ID',
+            'VITE_CF_CLIENT_SECRET'
+          )
+          $definedVariables = Get-Content '.env' | ForEach-Object {
+            if ($_ -match '^\s*([^#][^=]*)=(.*)$' -and -not [string]::IsNullOrWhiteSpace($Matches[2])) {
+              $Matches[1].Trim()
+            }
+          }
+          $missingVariables = $requiredVariables | Where-Object { $_ -notin $definedVariables }
+          if ($missingVariables) {
+            throw "O secret ENV não possui valores para: $($missingVariables -join ', ')."
+          }
+
+      - name: Validate release version
+        shell: pwsh
+        run: |
+          $version = (Get-Content 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
+          $expectedTag = "v$version"
+          if ($env:GITHUB_REF_NAME -ne $expectedTag) {
+            throw "A tag '$env:GITHUB_REF_NAME' não corresponde à versão '$version' do tauri.conf.json. Use '$expectedTag'."
+          }
+
+      - name: Validate updater signing credentials
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            throw 'O secret TAURI_SIGNING_PRIVATE_KEY está vazio ou indisponível.'
+          }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD)) {
+            throw 'O secret TAURI_SIGNING_PRIVATE_KEY_PASSWORD está vazio ou indisponível.'
+          }
+          $probe = Join-Path $env:RUNNER_TEMP 'updater-signing-probe.txt'
+          [System.IO.File]::WriteAllText($probe, 'Nexti Integrado updater signing probe')
+          & '.\node_modules\.bin\tauri.cmd' signer sign $probe
+          if ($LASTEXITCODE -ne 0) {
+            throw 'A chave privada e a senha do updater não formam um par válido.'
+          }
+
       - name: Build Tauri Application and Release
         uses: tauri-apps/tauri-action@v0
         env:
