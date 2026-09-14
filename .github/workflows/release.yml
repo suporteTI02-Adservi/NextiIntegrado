@@ -9,18 +9,23 @@ jobs:
   publish-tauri:
     permissions:
       contents: write
+
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: npm
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
       - name: Install frontend dependencies
         run: npm ci
@@ -33,37 +38,57 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:BUILD_ENV)) {
             throw 'O repository secret ENV está vazio ou indisponível.'
           }
+
           [System.IO.File]::WriteAllText(
             (Join-Path $env:GITHUB_WORKSPACE '.env'),
             $env:BUILD_ENV,
             [System.Text.UTF8Encoding]::new($false)
           )
 
-      - name: Build Tauri Application & Release
+      - name: Build Tauri Application and Release
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: v__VERSION__ # tauri-action substitui automaticamente pela versão do tauri.conf.json
-          releaseName: 'Nexti Integrado v__VERSION__'
-          releaseBody: 'Nova versão lançada automaticamente pelo GitHub Actions.'
+          tagName: v__VERSION__
+          releaseName: Nexti Integrado v__VERSION__
+          releaseBody: Nova versão lançada automaticamente pelo GitHub Actions.
           releaseDraft: false
           prerelease: false
           args: --target x86_64-pc-windows-msvc
 
-      # A versão 3.0.0 consulta updater.json. Mantenha este alias para que ela
-      # consiga migrar para a primeira versão que passou a usar latest.json.
+      # Compatibilidade com a versão 3.0.0, que consulta updater.json.
       - name: Publish legacy updater manifest
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $version = (Get-Content 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
+          $version = (
+            Get-Content 'src-tauri/tauri.conf.json' -Raw |
+            ConvertFrom-Json
+          ).version
+
           $tag = "v$version"
           $compatDirectory = Join-Path $env:RUNNER_TEMP 'updater-compat'
-          New-Item -ItemType Directory -Path $compatDirectory -Force | Out-Null
-          gh release download $tag --pattern 'latest.json' --dir $compatDirectory
-          Copy-Item (Join-Path $compatDirectory 'latest.json') (Join-Path $compatDirectory 'updater.json')
-          gh release upload $tag (Join-Path $compatDirectory 'updater.json') --clobber
+
+          New-Item `
+            -ItemType Directory `
+            -Path $compatDirectory `
+            -Force |
+            Out-Null
+
+          gh release download `
+            $tag `
+            --pattern 'latest.json' `
+            --dir $compatDirectory
+
+          Copy-Item `
+            (Join-Path $compatDirectory 'latest.json') `
+            (Join-Path $compatDirectory 'updater.json')
+
+          gh release upload `
+            $tag `
+            (Join-Path $compatDirectory 'updater.json') `
+            --clobber
