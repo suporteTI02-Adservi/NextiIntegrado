@@ -6,7 +6,6 @@ import { Layout } from "./components/Layout/Layout";
 import { useEffect, useState } from "react";
 import { check } from "@tauri-apps/plugin-updater";
 import { ask, message } from "@tauri-apps/plugin-dialog";
-import { relaunch } from "@tauri-apps/plugin-process";
 import { ExtractionProvider } from "./context/ExtractionContext";
 import { IntroAnimation } from "./components/IntroAnimation/IntroAnimation";
 
@@ -34,11 +33,18 @@ function App() {
               kind: 'info' 
             });
             await update.downloadAndInstall();
-            await relaunch();
           }
         }
       } catch (error) {
         console.error('Erro ao verificar atualizações:', error);
+        const detail = String(error);
+        const reason = /signature|public key|verify|verification/i.test(detail)
+          ? 'A assinatura da atualização não corresponde à chave desta instalação. Instale a versão mais recente manualmente uma vez.'
+          : 'Não foi possível concluir a atualização. Verifique a conexão e tente novamente.';
+        await message(reason, {
+          title: 'Falha na atualização',
+          kind: 'error'
+        });
       }
     }
     
